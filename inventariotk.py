@@ -1630,6 +1630,18 @@ def ventana_reportes():
             top.destroy()
         ttk.Button(top, text="Seleccionar", command=grabar_fecha).pack(pady=5)
 
+   # --- Botón Limpiar Tabla (Reubicado y con estilo) ---
+    style = ttk.Style()
+    style.configure("Small.TButton", font=("Arial", 8)) # Define un estilo más pequeño
+
+    def limpiar_tabla_reporte():
+        tabla_reporte.delete(*tabla_reporte.get_children())
+
+    boton_limpiar = ttk.Button(frame_tabla, text="Limpiar", command=limpiar_tabla_reporte, style="Small.TButton")
+    boton_limpiar.pack(side="top", anchor="ne", padx=5, pady=5) # Arriba a la derecha
+
+
+
     def generar_reporte():
         categoria = categoria_seleccionada.get()
         departamento = departamento_seleccionado.get()
@@ -1880,7 +1892,7 @@ def exportar_tabla_pdf(tabla_treeview):
         print("Error: No se encontró la imagen del membrete.")
 
     # --- Título del Reporte ---
-    title = Paragraph("Reporte de Inventario", style_heading)
+    title = Paragraph("Reporte", style_heading)
     title.style.alignment = 1  # Centrar el título
     story.append(title)
     story.append(Paragraph(" ", style_normal)) # Espacio después del título
