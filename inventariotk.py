@@ -20,7 +20,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors,units
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
-from PIL import Image  
+from PIL import Image as PImage  
 import io
 
 
@@ -213,7 +213,19 @@ def iniciar_sesion():
 
 
 
+def abrir_calendario(ventana_padre, entry_fecha):
+    """Abre una ventana con un calendario y actualiza el campo de fecha."""
+    def seleccionar_fecha():
+        fecha = cal.get_date()
+        entry_fecha.delete(0, tk.END)
+        entry_fecha.insert(0, fecha)
+        ventana_calendario.destroy()
 
+    ventana_calendario = tk.Toplevel(ventana_padre)
+    ventana_calendario.title("Seleccionar Fecha")
+    cal = Calendar(ventana_calendario, selectmode="day", date_pattern="yyyy-mm-dd")
+    cal.pack(padx=10, pady=10)
+    ttk.Button(ventana_calendario, text="Seleccionar", command=seleccionar_fecha).pack(pady=5)
 
 
 
@@ -467,23 +479,69 @@ def mostrar_inventario():
     ventana_inventario = tk.Toplevel(ventana)
     ventana_inventario.title("Inventario")
     ventana_inventario.geometry("1200x600")
+    ventana_inventario.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_inventario)
+    style.theme_use('clam')
+
+    style.configure("CustomLabel.TLabel",
+                    foreground="#ffffff",
+                    background="#A9A9A9",
+                    font=("Segoe UI", 10, "bold"))
+
+    style.configure("TCombobox",
+                    foreground="#000000",
+                    background="#ffffff",
+                    fieldbackground="#ffffff",
+                    insertcolor="#000000",
+                    font=("Segoe UI", 10))
+
+    style.configure("CustomEntry.TEntry",
+                    foreground="#000000",
+                    background="#ffffff",
+                    insertcolor="#000000",
+                    font=("Segoe UI", 10))
+
+    style.configure("CustomButton.TButton",
+                    foreground="#000000",
+                    background="#d9d9d9",
+                    font=("Segoe UI", 10, "bold"),
+                    padding=8,
+                    relief="raised",
+                    anchor="center")
+    style.map("CustomButton.TButton",
+              background=[('active', '#c1c1c1')],
+              foreground=[('active', '#000000')])
+
+    style.configure("Grid.Treeview",
+                    foreground="#000000",
+                    background="#ffffff",
+                    font=("Segoe UI", 10))
+    style.configure("Grid.Treeview.Heading",
+                    foreground="#000000",
+                    background="#d9d9d9",
+                    font=("Segoe UI", 10, "bold"))
+    style.map("Grid.Treeview",
+              background=[('selected', '#bddfff')],
+              foreground=[('selected', '#000000')])
 
     # Frame para los menús desplegables, totales y búsqueda
-    frame_menu = tk.Frame(ventana_inventario)
-    frame_menu.pack(pady=10)
+    frame_menu = tk.Frame(ventana_inventario, bg="#A9A9A9")
+    frame_menu.pack(pady=10, padx=10, fill=tk.X)
 
     # Frame para la búsqueda por abreviatura
-    frame_busqueda = tk.Frame(frame_menu)
+    frame_busqueda = tk.Frame(frame_menu, bg="#A9A9A9")
     frame_busqueda.pack(side=tk.LEFT, padx=10)
 
-    tk.Label(frame_busqueda, text="Buscar:", bg="#E0F7FA").pack(side=tk.LEFT)
-    entry_busqueda = tk.Entry(frame_busqueda)
+    ttk.Label(frame_busqueda, text="Buscar:", style="CustomLabel.TLabel").pack(side=tk.LEFT)
+    entry_busqueda = ttk.Entry(frame_busqueda, style="CustomEntry.TEntry")
     entry_busqueda.pack(side=tk.LEFT)
 
     # Función para buscar productos por abreviatura
     def buscar_por_abreviatura(event=None):  # Agregamos el argumento event
         termino_busqueda = entry_busqueda.get().lower()
-        buscar_producto(termino_busqueda)
+        mostrar_tabla(categoria_seleccionada_mostrar.get(), termino_busqueda)
 
     entry_busqueda.bind("<KeyRelease>", buscar_por_abreviatura)  # Enlazamos el evento KeyRelease
 
@@ -492,7 +550,7 @@ def mostrar_inventario():
     categoria_seleccionada_mostrar = tk.StringVar(frame_menu)
     categoria_seleccionada_mostrar.set(categorias_mostrar[0])
 
-    menu_categorias_mostrar = ttk.Combobox(frame_menu, textvariable=categoria_seleccionada_mostrar, values=categorias_mostrar)
+    menu_categorias_mostrar = ttk.Combobox(frame_menu, textvariable=categoria_seleccionada_mostrar, values=categorias_mostrar, style="TCombobox")
     menu_categorias_mostrar.pack(side=tk.LEFT, padx=10)
 
     # Función para mostrar el inventario según la categoría seleccionada
@@ -500,16 +558,16 @@ def mostrar_inventario():
         categoria = categoria_seleccionada_mostrar.get()
         mostrar_tabla(categoria)
 
-    boton_mostrar = tk.Button(frame_menu, text="Mostrar", command=mostrar_por_categoria)
+    boton_mostrar = ttk.Button(frame_menu, text="Mostrar", command=mostrar_por_categoria, style="CustomButton.TButton")
     boton_mostrar.pack(side=tk.LEFT, padx=10)
 
     # Frame para la tabla de inventario
-    frame_tabla = tk.Frame(ventana_inventario)
-    frame_tabla.pack(fill=tk.BOTH, expand=True)
+    frame_tabla = tk.Frame(ventana_inventario, bg="#A9A9A9")
+    frame_tabla.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     # Treeview (tabla)
     tabla_productos = ttk.Treeview(frame_tabla, columns=("Categoría", "Producto", "Destino Entrada", "Destino Salida", "Entrada", "Salida", "Stock", "Unidad Medida", "Fecha Entrada", "Fecha Salida"), show="headings", style="Grid.Treeview")
-    tabla_productos.pack(fill=tk.BOTH, expand=True)
+    tabla_productos.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
     # Definir encabezados de columna
     tabla_productos.heading("Categoría", text="Categoría", anchor=tk.W)
@@ -541,16 +599,16 @@ def mostrar_inventario():
     barra_desplazamiento.pack(side=tk.RIGHT, fill=tk.Y)
 
     # Frame para los totales
-    frame_totales = tk.Frame(ventana_inventario)
-    frame_totales.pack(pady=10)
+    frame_totales = tk.Frame(ventana_inventario, bg="#A9A9A9")
+    frame_totales.pack(pady=10, padx=10, fill=tk.X)
 
-    label_totales = tk.Label(frame_totales, text="")
+    label_totales = ttk.Label(frame_totales, text="", style="CustomLabel.TLabel")
     label_totales.pack()
 
-     # Función para mostrar la tabla con los datos filtrados
-    def mostrar_tabla(categoria):
+    # Función para mostrar la tabla con los datos filtrados
+    def mostrar_tabla(categoria="Todas", termino_busqueda=""):
         tabla_productos.delete(*tabla_productos.get_children())
-        productos_filtrados = obtener_productos_filtrados(categoria)
+        productos_filtrados = obtener_productos_filtrados(categoria, termino_busqueda)
         for producto, datos in productos_filtrados:
             destino_salida = datos["destino_salida"]
             numero_requisicion = datos.get("numero_requisicion", "")  # Leer de la clave numero_requisicion
@@ -572,131 +630,92 @@ def mostrar_inventario():
             ))
         mostrar_totales(categoria)
 
-    # Función para obtener los productos filtrados por categoría
-    def obtener_productos_filtrados(categoria):
-        if categoria == "Todas":
-            return sorted(inventario.items(), key=lambda x: (x[1]["categoria"], x[0]))
-        else:
-            return sorted([(producto, datos) for producto, datos in inventario.items() if datos["categoria"] == categoria], key=lambda x: x[0])
+    # Función para obtener los productos filtrados por categoría y término de búsqueda
+    def obtener_productos_filtrados(categoria, termino_busqueda):
+        resultados = []
+        for producto, datos in inventario.items():
+            incluir = True
+            if categoria != "Todas" and datos["categoria"] != categoria:
+                incluir = False
+            if termino_busqueda and not producto.lower().startswith(termino_busqueda):
+                incluir = False
+            if incluir:
+                resultados.append((producto, datos))
+        return sorted(resultados, key=lambda x: (x[1]["categoria"], x[0]))
 
     # Función para mostrar los totales
     def mostrar_totales(categoria):
         if categoria == "Todas":
             total_productos = len(inventario)
             total_categorias = len(set(datos["categoria"] for datos in inventario.values()))
-            label_totales.config(text=f"Total de productos: {total_productos}, Total de categorías: {total_categorias}")
+            label_totales.config(text=f"Total de productos: {total_productos}, Total de categorías: {total_categorias}", style="CustomLabel.TLabel")
         else:
             productos_categoria = [datos for datos in inventario.values() if datos["categoria"] == categoria]
             total_productos = len(productos_categoria)
-            label_totales.config(text=f"Total de productos en {categoria}: {total_productos}")
+            label_totales.config(text=f"Total de productos en {categoria}: {total_productos}", style="CustomLabel.TLabel")
 
     # Mostrar todos los productos al inicio
-    mostrar_tabla("Todas")
+    mostrar_tabla()
 
-    # Función para buscar productos por abreviatura
-    def buscar_producto(termino_busqueda):
-        tabla_productos.delete(*tabla_productos.get_children())
-        resultados = []
-        for producto, datos in inventario.items():
-            if producto.lower().startswith(termino_busqueda):
-                resultados.append((producto, datos))
-        for producto, datos in resultados:
-            tabla_productos.insert("", tk.END, values=(
-                datos["categoria"],
-                producto,
-                datos["destino_entrada"],
-                datos["destino_salida"],
-                datos["entrada"],
-                datos["salida"],
-                datos["stock"],
-                datos["unidad_medida"],
-                datos["fecha_entrada"],
-                datos["fecha_salida"]
-            ))
-    
-    # Función para manejar el clic derecho en un producto
-    def menu_contextual(event):
-        item = tabla_productos.identify_row(event.y)
-        if item:
-            producto = tabla_productos.item(item, "values")[1]  # Obtener el nombre del producto
-            menu = tk.Menu(ventana_inventario, tearoff=0)
-            menu.add_command(label="Realizar Entrada", command=lambda: realizar_entrada_contextual(producto))
-            menu.add_command(label="Realizar Salida", command=lambda: realizar_salida_contextual(producto))
-            menu.add_command(label="Eliminar Producto", command=lambda: eliminar_producto_contextual(producto))
-            menu.post(event.x_root, event.y_root)
+    def realizar_entrada_contextual(producto):
+        """Realiza una entrada de productos desde el menú contextual con botón de calendario."""
+        def confirmar_entrada():
+            cantidad = entry_cantidad.get()
+            fecha = entry_fecha.get()
+            if not cantidad.isdigit():
+                messagebox.showerror("Error", "La cantidad debe ser un número.")
+                return
+            cantidad = int(cantidad)
 
-    # Enlazar el evento de clic derecho al Treeview
-    tabla_productos.bind("<Button-3>", menu_contextual)
+            if producto in inventario:
+                inventario[producto]["stock"] += cantidad
+                inventario[producto]["entrada"] += cantidad
+                inventario[producto]["fecha_entrada"] = fecha
+                entradas_departamentos.append({
+                    "producto": producto,
+                    "cantidad": cantidad,
+                    "fecha": fecha,
+                    "destino": inventario[producto]["destino_entrada"]
+                })
+                mostrar_tabla(categoria_seleccionada_mostrar.get())
+                messagebox.showinfo("Entrada Realizada", f"{cantidad} unidades de {producto} entraron al inventario.")
+                ventana_entrada.destroy()
+            else:
+                messagebox.showerror("Error", "El producto no existe en el inventario.")
 
-    
+        ventana_entrada = tk.Toplevel(ventana_inventario)
+        ventana_entrada.title(f"Realizar Entrada - {producto}")
+        ventana_entrada.configure(bg="#A9A9A9")
 
-    ventana_inventario.mainloop()
-def abrir_calendario(entry_fecha):
-    """Abre una ventana con un calendario y actualiza el campo de fecha."""
-    def seleccionar_fecha():
-        fecha = cal.get_date()
-        entry_fecha.delete(0, tk.END)
-        entry_fecha.insert(0, fecha)
-        ventana_calendario.destroy()
+        ttk.Label(ventana_entrada, text="Cantidad:", style="CustomLabel.TLabel").grid(row=0, column=0, padx=10, pady=10)
+        entry_cantidad = ttk.Entry(ventana_entrada, style="CustomEntry.TEntry")
+        entry_cantidad.grid(row=0, column=1, padx=10, pady=10)
 
-    ventana_calendario = tk.Toplevel(ventana)
-    ventana_calendario.title("Seleccionar Fecha")
-    cal = Calendar(ventana_calendario, selectmode="day", date_pattern="yyyy-mm-dd")
-    cal.pack()
-    tk.Button(ventana_calendario, text="Seleccionar", command=seleccionar_fecha).pack()
+        ttk.Label(ventana_entrada, text="Fecha:", style="CustomLabel.TLabel").grid(row=1, column=0, padx=10, pady=10)
+        entry_fecha = ttk.Entry(ventana_entrada, style="CustomEntry.TEntry")
+        entry_fecha.grid(row=1, column=1, padx=10, pady=10)
+        ttk.Button(ventana_entrada, text="Calendario", command=lambda: abrir_calendario(ventana_entrada, entry_fecha), style="CustomButton.TButton").grid(row=1, column=2, padx=10, pady=10)
 
-def realizar_entrada_contextual(producto):
-    """Realiza una entrada de productos desde el menú contextual con botón de calendario."""
-    def confirmar_entrada():
-        cantidad = int(entry_cantidad.get())
-        fecha = entry_fecha.get()
+        ttk.Button(ventana_entrada, text="Confirmar Entrada", command=confirmar_entrada, style="CustomButton.TButton").grid(row=2, column=0, columnspan=3, pady=15, padx=10, sticky="ew")
+        ventana_entrada.grid_columnconfigure(1, weight=1)
 
-        if producto in inventario:
-            inventario[producto]["stock"] += cantidad
-            inventario[producto]["entrada"] += cantidad
-            inventario[producto]["fecha_entrada"] = fecha
-            entradas_departamentos.append({
-                "producto": producto,
-                "cantidad": cantidad,
-                "fecha": fecha,
-                "destino": inventario[producto]["destino_entrada"]
-            })
-            
-            
-            messagebox.showinfo("Entrada Realizada", f"{cantidad} unidades de {producto} entraron al inventario.")
-            ventana_entrada.destroy()
-        else:
-            messagebox.showerror("Error", "El producto no existe en el inventario.")
+    def realizar_salida_contextual(producto):
+        """Realiza una salida de productos desde el menú contextual con botón de calendario."""
 
-    ventana_entrada = tk.Toplevel(ventana)
-    ventana_entrada.title(f"Realizar Entrada - {producto}")
-    ventana_entrada.configure(bg="#E0F7FA")
-
-    tk.Label(ventana_entrada, text="Cantidad:", bg="#E0F7FA").grid(row=0, column=0)
-    entry_cantidad = tk.Entry(ventana_entrada)
-    entry_cantidad.grid(row=0, column=1)
-
-    tk.Label(ventana_entrada, text="Fecha:", bg="#E0F7FA").grid(row=1, column=0)
-    entry_fecha = tk.Entry(ventana_entrada)
-    entry_fecha.grid(row=1, column=1)
-    tk.Button(ventana_entrada, text="Calendario", command=lambda: abrir_calendario(entry_fecha)).grid(row=1, column=2)
-
-    tk.Button(ventana_entrada, text="Confirmar Entrada", command=confirmar_entrada, bg="#A5D6A7").grid(row=2, column=0, columnspan=3, pady=10)
-
-def realizar_salida_contextual(producto):
-    """Realiza una salida de productos desde el menú contextual con botón de calendario."""
-    
-    def confirmar_salida():
-        try:
+        def confirmar_salida():
             departamento = departamento_var.get()
-            cantidad = int(entry_cantidad.get())
+            cantidad = entry_cantidad.get()
             fecha = entry_fecha.get()
             numero_requisicion = entry_numero_requisicion.get()
 
-            # Verificar si algún campo está vacío
-            if not departamento or not cantidad or not fecha or not numero_requisicion:
+            if not cantidad.isdigit():
+                messagebox.showerror("Error", "Cantidad inválida. Ingrese un número entero.")
+                return
+            cantidad = int(cantidad)
+
+            if not departamento or not fecha or not numero_requisicion:
                 messagebox.showerror("Error", "Por favor, complete todos los campos.")
-                return  # Salir de la función si algún campo está vacío
+                return
 
             if producto in inventario and inventario[producto]["stock"] >= cantidad:
                 inventario[producto]["stock"] -= cantidad
@@ -711,61 +730,72 @@ def realizar_salida_contextual(producto):
                     "destino": departamento,
                     "requisicion": numero_requisicion
                 })
-                
+                mostrar_tabla(categoria_seleccionada_mostrar.get())
                 messagebox.showinfo("Salida Realizada", f"{cantidad} unidades de {producto} salieron para {departamento}.")
                 ventana_salida.destroy()
-                
             else:
                 messagebox.showerror("Error", "No hay suficiente stock para realizar la salida.")
 
-        except ValueError:
-            messagebox.showerror("Error", "Cantidad inválida. Ingrese un número entero.")
-        except Exception as e:
-            messagebox.showerror("Error", f"Ocurrió un error: {e}")
+        ventana_salida = tk.Toplevel(ventana_inventario)
+        ventana_salida.title(f"Realizar Salida - {producto}")
+        ventana_salida.configure(bg="#A9A9A9")
 
-    ventana_salida = tk.Toplevel(ventana)
-    ventana_salida.title(f"Realizar Salida - {producto}")
-    ventana_salida.configure(bg="#E0F7FA")
+        ttk.Label(ventana_salida, text="Departamento:", style="CustomLabel.TLabel").grid(row=0, column=0, padx=10, pady=10)
+        departamentos = ["OTIC", "Oficina de Gestion Administrativa", "Oficina Contabilidad","Oficina Compras","Oficina de Bienes","Direccion de Servicios Generales y Transporte","Oficina de Seguimiento y Proyectos Estructurales","Direccion General de Planificacion Estrategica","Planoteca","Biblioteca","Direccion General de Seguimiento de Proyectos","Gestion Participativa Parque la isla","Oficina de Atencion ciudadana","Oficina de gestion Humana","Presidencia","Secretaria General","Consultoria Juridica","Oficina de Planificacion y Presupuesto","Auditoria","Direccion de informacion y Comunicacion","Direccion General de Formacion"]  # Reemplaza con tus departamentos
+        departamentos.sort()
+        departamento_var = tk.StringVar(ventana_salida)
+        departamento_var.set(departamentos[0] if departamentos else "")
+        combo_departamento = ttk.Combobox(ventana_salida, textvariable=departamento_var, values=departamentos, style="TCombobox")
+        combo_departamento.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
-    # Menú desplegable para seleccionar el departamento
-    tk.Label(ventana_salida, text="Departamento:", bg="#E0F7FA").grid(row=0, column=0)
-    departamentos = ["OTIC", "Oficina de Gestion Administrativa", "Oficina Contabilidad","Oficina Compras","Oficina de Bienes","Direccion de Servicios Generales y Transporte","Oficina de Seguimiento y Proyectos Estructurales","Direccion General de Planificacion Estrategica","Planoteca","Biblioteca","Direccion General de Seguimiento de Proyectos","Gestion Participativa Parque la isla","Oficina de Atencion ciudadana","Oficina de gestion Humana","Presidencia","Secretaria General","Consultoria Juridica","Oficina de Planificacion y Presupuesto","Auditoria","Direccion de informacion y Comunicacion","Direccion General de Formacion"]  # Reemplaza con tus departamentos
-    departamentos.sort()
-    departamento_var = tk.StringVar(ventana_salida)
-    departamento_var.set(departamentos[0])  # Valor predeterminado
-    ttk.Combobox(ventana_salida, textvariable=departamento_var, values=departamentos).grid(row=0, column=1)
+        ttk.Label(ventana_salida, text="Cantidad:", style="CustomLabel.TLabel").grid(row=1, column=0, padx=10, pady=10)
+        entry_cantidad = ttk.Entry(ventana_salida, style="CustomEntry.TEntry")
+        entry_cantidad.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
-   
-    tk.Label(ventana_salida, text="Cantidad:", bg="#E0F7FA").grid(row=1, column=0)
-    entry_cantidad = tk.Entry(ventana_salida)
-    entry_cantidad.grid(row=1, column=1)
+        ttk.Label(ventana_salida, text="Fecha:", style="CustomLabel.TLabel").grid(row=2, column=0, padx=10, pady=10)
+        entry_fecha = ttk.Entry(ventana_salida, style="CustomEntry.TEntry")
+        entry_fecha.grid(row=2, column=1, padx=10, pady=10)
+        ttk.Button(ventana_salida, text="Calendario", command=lambda: abrir_calendario(ventana_salida, entry_fecha), style="CustomButton.TButton").grid(row=2, column=2, padx=10, pady=10)
 
-    tk.Label(ventana_salida, text="Fecha:", bg="#E0F7FA").grid(row=2, column=0)
-    entry_fecha = tk.Entry(ventana_salida)
-    entry_fecha.grid(row=2, column=1)
-    tk.Button(ventana_salida, text="Calendario", command=lambda: abrir_calendario(entry_fecha)).grid(row=2, column=2)
+        ttk.Label(ventana_salida, text="Número de Requisición:", style="CustomLabel.TLabel").grid(row=3, column=0, padx=10, pady=10)
+        entry_numero_requisicion = ttk.Entry(ventana_salida, style="CustomEntry.TEntry")
+        entry_numero_requisicion.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
 
-    tk.Label(ventana_salida, text="Número de Requisición:", bg="#E0F7FA").grid(row=3, column=0)
-    entry_numero_requisicion = tk.Entry(ventana_salida)
-    entry_numero_requisicion.grid(row=3, column=1)
+        ttk.Button(ventana_salida, text="Confirmar Salida", command=confirmar_salida, style="CustomButton.TButton").grid(row=4, column=0, columnspan=3, pady=15, padx=10, sticky="ew")
+        ventana_salida.grid_columnconfigure(1, weight=1)
 
+    def eliminar_producto_contextual(producto):
+        """Elimina un producto del inventario desde el menú contextual."""
+        if messagebox.askyesno("Eliminar Producto", f"¿Seguro que desea eliminar {producto} del inventario?"):
+            if producto in inventario:
+                del inventario[producto]
+                mostrar_tabla(categoria_seleccionada_mostrar.get())
+                messagebox.showinfo("Producto Eliminado", f"Producto '{producto}' eliminado del inventario.")
+            else:
+                messagebox.showerror("Error", "El producto no existe en el inventario.")
 
-    tk.Button(ventana_salida, text="Confirmar Salida", command=confirmar_salida, bg="#A5D6A7").grid(row=4, column=0, columnspan=3, pady=10)
-    
-def eliminar_producto_contextual(producto):
-    """Elimina un producto del inventario desde el menú contextual."""
-    if messagebox.askyesno("Eliminar Producto", f"¿Seguro que desea eliminar {producto} del inventario?"):
-        if producto in inventario:
-            del inventario[producto]
-            messagebox.showinfo("Producto Eliminado", f"Producto '{producto}' eliminado del inventario.")
-        else:
-            messagebox.showerror("Error", "El producto no existe en el inventario.")
+    # Función para manejar el clic derecho en un producto
+    def menu_contextual(event):
+        item = tabla_productos.identify_row(event.y)
+        if item:
+            producto_nombre = tabla_productos.item(item, "values")[1]  # Obtener el nombre del producto
+            menu = tk.Menu(ventana_inventario, tearoff=0)
+            menu.add_command(label="Realizar Entrada", command=lambda: realizar_entrada_contextual(producto_nombre))
+            menu.add_command(label="Realizar Salida", command=lambda: realizar_salida_contextual(producto_nombre))
+            menu.add_command(label="Eliminar Producto", command=lambda: eliminar_producto_contextual(producto_nombre))
+            menu.post(event.x_root, event.y_root)
+
+    # Enlazar el evento de clic derecho al Treeview
+    tabla_productos.bind("<Button-3>", menu_contextual)
+
+    ventana_inventario.grid_columnconfigure(0, weight=1)
+    ventana_inventario.grid_rowconfigure(1, weight=1)
 
 
 
 def calcular_consumo_departamento():
     """Calcula el consumo diario, semanal y mensual por departamento y en general."""
-  
+
     consumo_diario = calcular_consumo_periodo(datetime.timedelta(days=1))
     consumo_semanal = calcular_consumo_periodo(datetime.timedelta(weeks=1))
     consumo_mensual = calcular_consumo_periodo(datetime.timedelta(days=30))
@@ -776,10 +806,31 @@ def mostrar_consumo_periodos(consumo_diario, consumo_semanal, consumo_mensual):
     """Muestra el consumo para los tres períodos en una tabla."""
     ventana_consumo = tk.Toplevel(ventana)  # Usar la variable global 'ventana'
     ventana_consumo.title("Consumo por Período")
-    ventana_consumo.configure(bg="#E0F7FA")
+    ventana_consumo.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_consumo)
+    style.theme_use('clam')
+
+    style.configure("CustomLabel.TLabel",
+                    foreground="#ffffff",
+                    background="#A9A9A9",
+                    font=("Segoe UI", 10, "bold"))
+
+    style.configure("Grid.Treeview",
+                    foreground="#000000",
+                    background="#ffffff",
+                    font=("Segoe UI", 10))
+    style.configure("Grid.Treeview.Heading",
+                    foreground="#000000",
+                    background="#d9d9d9",
+                    font=("Segoe UI", 10, "bold"))
+    style.map("Grid.Treeview",
+              background=[('selected', '#bddfff')],
+              foreground=[('selected', '#000000')])
 
     # Treeview (tabla) para mostrar el consumo
-    tabla_consumo = ttk.Treeview(ventana_consumo, columns=("Departamento", "Producto", "Diario", "Semanal", "Mensual", "Unidad Medida", "Porcentaje"), show="headings")
+    tabla_consumo = ttk.Treeview(ventana_consumo, columns=("Departamento", "Producto", "Diario", "Semanal", "Mensual", "Unidad Medida", "Porcentaje"), show="headings", style="Grid.Treeview")
     tabla_consumo.pack(fill=tk.BOTH, expand=True)
 
     # Definir encabezados de columna
@@ -823,7 +874,6 @@ def mostrar_consumo_periodos(consumo_diario, consumo_semanal, consumo_mensual):
 
             tabla_consumo.insert("", tk.END, values=(departamento, producto, diario, semanal, mensual, unidad_medida, f"{porcentaje:.2f}%"))
 
-    
 
 def calcular_consumo_periodo(periodo):
     """Calcula el consumo para un período específico."""
@@ -850,11 +900,11 @@ def calcular_consumo_periodo(periodo):
             cantidad = salida["cantidad"]
 
             try:
-                 cantidad = int(cantidad)
+                cantidad = int(cantidad)
             except ValueError:
                 print(f"Cantidad inválida: {cantidad} para el producto {producto} en el departamento {departamento}")
                 continue  # Saltar a la siguiente salida
-            
+
 
             if departamento not in consumo_departamentos:
                 consumo_departamentos[departamento] = {}
@@ -873,10 +923,31 @@ def mostrar_consumo_periodo(periodo_nombre, consumo_periodo):
 
     ventana_consumo = tk.Toplevel(ventana)  # Usar la variable global 'ventana'
     ventana_consumo.title(f"Consumo {periodo_nombre}")
-    ventana_consumo.configure(bg="#E0F7FA")
+    ventana_consumo.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_consumo)
+    style.theme_use('clam')
+
+    style.configure("CustomLabel.TLabel",
+                    foreground="#ffffff",
+                    background="#A9A9A9",
+                    font=("Segoe UI", 10, "bold"))
+
+    style.configure("Grid.Treeview",
+                    foreground="#000000",
+                    background="#ffffff",
+                    font=("Segoe UI", 10))
+    style.configure("Grid.Treeview.Heading",
+                    foreground="#000000",
+                    background="#d9d9d9",
+                    font=("Segoe UI", 10, "bold"))
+    style.map("Grid.Treeview",
+              background=[('selected', '#bddfff')],
+              foreground=[('selected', '#000000')])
 
     # Treeview (tabla) para mostrar el consumo
-    tabla_consumo = ttk.Treeview(ventana_consumo, columns=("Departamento", "Producto", "Consumo", "Unidad Medida", "Porcentaje"), show="headings")
+    tabla_consumo = ttk.Treeview(ventana_consumo, columns=("Departamento", "Producto", "Consumo", "Unidad Medida", "Porcentaje"), show="headings", style="Grid.Treeview")
     tabla_consumo.pack(fill=tk.BOTH, expand=True)
 
     # Definir encabezados de columna
@@ -925,56 +996,7 @@ def eliminar_producto():
 
     tk.Button(ventana_eliminar, text="Eliminar", command=eliminar, bg="#EF9A9A").pack(pady=10)  # Botón rojo para eliminar
 
-def obtener_contenido_inventario():
-    """Obtiene el contenido del inventario para imprimir."""
-    contenido = "Inventario:\n"
-    for producto, datos in inventario.items():
-        contenido += f"- {producto}:\n"
-        contenido += f"  Categoría: {datos['categoria']}\n"
-        contenido += f"  Destino de Entrada: {datos['destino_entrada']}\n"
-        contenido += f"  Destino de Salida: {datos['destino_salida']}\n"
-        contenido += f"  Entrada: {datos['entrada']}\n"
-        contenido += f"  Salida: {datos['salida']}\n"
-        contenido += f"  Stock: {datos['stock']} {datos['unidad_medida']}\n"
-        contenido += f"  Fecha de Entrada: {datos['fecha_entrada']}\n"
-        contenido += f"  Fecha de Salida: {datos['fecha_salida']}\n"
-    return contenido
 
-def obtener_contenido_consumo():
-    """Obtiene el contenido del consumo por departamento para imprimir."""
-    contenido = "\nConsumo por Departamento:\n"
-    for departamento, productos in calcular_consumo_departamento.items():
-        contenido += f"- {departamento}:\n"
-        for producto, cantidad in productos.items():
-            contenido += f"  - {producto}: {cantidad}\n"
-    return contenido
-
-# Función para imprimir el contenido
-def imprimir_contenido(contenido):
-    """Imprime el contenido en la impresora predeterminada."""
-    try:
-        # Obtener la impresora predeterminada
-        impresora = win32print.GetDefaultPrinter()
-
-        # Crear un objeto de impresora
-        hPrinter = win32print.OpenPrinter(impresora)
-
-        # Iniciar un trabajo de impresión
-        job = win32print.StartDocPrinter(hPrinter, 1, ("Documento de Impresión", None, "RAW"))
-
-        # Enviar el contenido a la impresora
-        win32print.StartPagePrinter(hPrinter)
-        win32print.WritePrinter(hPrinter, contenido.encode())
-        win32print.EndPagePrinter(hPrinter)
-
-        # Finalizar el trabajo de impresión
-        win32print.EndDocPrinter(hPrinter)
-
-        # Cerrar el objeto de impresora
-        win32print.ClosePrinter(hPrinter)
-
-    except Exception as e:
-        messagebox.showerror("Error", f"Error al imprimir: {e}")
                             #Hasta aqui funciones principales.
 
 
@@ -996,53 +1018,107 @@ def imprimir_contenido(contenido):
 
                                     #Funciones de reportes:
 
-def generar_reporte_bajo_stock():  
-    """Genera un reporte de productos con bajo stock en una tabla."""  
-    ventana_reporte = tk.Toplevel(ventana)  
-    ventana_reporte.title("Reporte de Bajo Stock")  
+def generar_reporte_bajo_stock():
+    """Genera un reporte de productos con bajo stock en una tabla."""
+    ventana_reporte = tk.Toplevel(ventana)
+    ventana_reporte.title("Reporte de Bajo Stock")
+    ventana_reporte.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
 
-    umbral_stock_minimo = 1  # Puedes ajustar este valor  
-    productos_bajo_stock = []  
-    for producto, datos in inventario.items():  
-        if datos["stock"] < umbral_stock_minimo:  
-            productos_bajo_stock.append((producto, datos))  
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_reporte)
+    style.theme_use('clam')
 
-    if productos_bajo_stock:  
-        # Treeview (tabla) para mostrar el reporte de bajo stock  
-        tabla_bajo_stock = ttk.Treeview(ventana_reporte, columns=("Producto", "Stock Actual", "Unidad Medida"), show="headings")  
-        tabla_bajo_stock.pack(fill=tk.BOTH, expand=True)  
+    style.configure("CustomLabel.TLabel",
+                    foreground="#ffffff",
+                    background="#A9A9A9",
+                    font=("Segoe UI", 10, "bold"))
 
-        # Definir encabezados de columna  
-        tabla_bajo_stock.heading("Producto", text="Producto", anchor=tk.W)  
-        tabla_bajo_stock.heading("Stock Actual", text="Stock Actual", anchor=tk.W)  
-        tabla_bajo_stock.heading("Unidad Medida", text="Unidad Medida", anchor=tk.W)  
+    style.configure("Grid.Treeview",
+                    foreground="#000000",
+                    background="#ffffff",
+                    font=("Segoe UI", 10))
+    style.configure("Grid.Treeview.Heading",
+                    foreground="#000000",
+                    background="#d9d9d9",
+                    font=("Segoe UI", 10, "bold"))
+    style.map("Grid.Treeview",
+              background=[('selected', '#bddfff')],
+              foreground=[('selected', '#000000')])
 
-        # Configurar ancho de columnas  
-        tabla_bajo_stock.column("Producto", width=150)  
-        tabla_bajo_stock.column("Stock Actual", width=100)  
-        tabla_bajo_stock.column("Unidad Medida", width=100)  
+    umbral_stock_minimo = 1  # Puedes ajustar este valor
+    productos_bajo_stock = []
+    for producto, datos in inventario.items():
+        if datos["stock"] < umbral_stock_minimo:
+            productos_bajo_stock.append((producto, datos))
 
-        # Insertar datos en la tabla  
-        for producto, datos in productos_bajo_stock:  
-            tabla_bajo_stock.insert("", tk.END, values=(producto, datos["stock"], datos["unidad_medida"]))  
+    if productos_bajo_stock:
+        # Treeview (tabla) para mostrar el reporte de bajo stock
+        tabla_bajo_stock = ttk.Treeview(ventana_reporte, columns=("Producto", "Stock Actual", "Unidad Medida"), show="headings", style="Grid.Treeview")
+        tabla_bajo_stock.pack(fill=tk.BOTH, expand=True)
 
-        # Agregar barra de desplazamiento vertical  
-        scrollbar_y = ttk.Scrollbar(ventana_reporte, orient="vertical", command=tabla_bajo_stock.yview)  
-        scrollbar_y.pack(side="right", fill="y")  
-        tabla_bajo_stock.configure(yscrollcommand=scrollbar_y.set)  
-    else:  
+        # Definir encabezados de columna
+        tabla_bajo_stock.heading("Producto", text="Producto", anchor=tk.W)
+        tabla_bajo_stock.heading("Stock Actual", text="Stock Actual", anchor=tk.W)
+        tabla_bajo_stock.heading("Unidad Medida", text="Unidad Medida", anchor=tk.W)
+
+        # Configurar ancho de columnas
+        tabla_bajo_stock.column("Producto", width=150)
+        tabla_bajo_stock.column("Stock Actual", width=100)
+        tabla_bajo_stock.column("Unidad Medida", width=100)
+
+        # Insertar datos en la tabla
+        for producto, datos in productos_bajo_stock:
+            tabla_bajo_stock.insert("", tk.END, values=(producto, datos["stock"], datos["unidad_medida"]))
+
+        # Agregar barra de desplazamiento vertical
+        scrollbar_y = ttk.Scrollbar(ventana_reporte, orient="vertical", command=tabla_bajo_stock.yview)
+        scrollbar_y.pack(side="right", fill="y")
+        tabla_bajo_stock.configure(yscrollcommand=scrollbar_y.set)
+    else:
         messagebox.showinfo("Reporte de Bajo Stock", "No hay productos con bajo stock.")
         
+
+
+
+
 
 def generar_reporte_entradas():
     """Genera un reporte del historial de entradas."""
     ventana_reporte = tk.Toplevel(ventana)
     ventana_reporte.title("Reporte de Entradas")
-    ventana_reporte.geometry("600x400")
+    ventana_reporte.geometry("800x500")
+    ventana_reporte.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_reporte)
+    style.theme_use('clam')
+
+    style.configure("CustomLabel.TLabel",
+                    foreground="#ffffff",
+                    background="#A9A9A9",
+                    font=("Segoe UI", 10, "bold"))
+
+    style.configure("CustomEntry.TEntry",
+                    foreground="#000000",
+                    background="#ffffff",
+                    insertcolor="#000000",
+                    font=("Segoe UI", 10))
+
+    style.configure("Grid.Treeview",
+                    foreground="#000000",
+                    background="#ffffff",
+                    font=("Segoe UI", 10))
+    style.configure("Grid.Treeview.Heading",
+                    foreground="#000000",
+                    background="#d9d9d9",
+                    font=("Segoe UI", 10, "bold"))
+    style.map("Grid.Treeview",
+              background=[('selected', '#bddfff')],
+              foreground=[('selected', '#000000')])
 
     # Treeview (tabla) para mostrar las entradas
-    tabla_entradas = ttk.Treeview(ventana_reporte, columns=("Producto", "Cantidad", "Fecha", "Destino"), show="headings")
-    tabla_entradas.pack(fill=tk.BOTH, expand=True)
+    tabla_entradas = ttk.Treeview(ventana_reporte, columns=("Producto", "Cantidad", "Fecha", "Destino"), show="headings", style="Grid.Treeview")
+    tabla_entradas.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     # Definir encabezados de columna
     tabla_entradas.heading("Producto", text="Producto", anchor=tk.W)
@@ -1058,27 +1134,25 @@ def generar_reporte_entradas():
 
     # Barras de desplazamiento
     scrollbar_vertical = ttk.Scrollbar(ventana_reporte, orient="vertical", command=tabla_entradas.yview)
-    scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y)
+    scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
     tabla_entradas.configure(yscrollcommand=scrollbar_vertical.set)
 
-    # Insertar datos en la tabla
+    # Insertar datos iniciales en la tabla
     for entrada in entradas_departamentos:
-        # Formatear la fecha a una cadena legible
-        fecha_str = entrada["fecha"].strftime("%d-%m-%Y") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
+        fecha_str = entrada["fecha"].strftime("%Y-%m-%d") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
         tabla_entradas.insert("", tk.END, values=(
             entrada["producto"],
             entrada["cantidad"],
-            fecha_str,  # Usar la fecha formateada
+            fecha_str,
             entrada["destino"]
         ))
 
-    # Función para eliminar una entrada
     def eliminar_entrada():
         seleccion = tabla_entradas.selection()
         if seleccion:
             item_id = seleccion[0]  # Obtener el ID del elemento seleccionado
             index = tabla_entradas.index(item_id)  # Obtener el índice del elemento en la tabla
-            
+
             if 0 <= index < len(entradas_departamentos):  # Verificar si el índice es válido
                 del entradas_departamentos[index]
                 tabla_entradas.delete(item_id)
@@ -1090,118 +1164,148 @@ def generar_reporte_entradas():
         if seleccion:
             item_id = seleccion[0]  # Obtener el ID del elemento seleccionado
             index = tabla_entradas.index(item_id)  # Obtener el índice del elemento en la tabla
-            
+
             if 0 <= index < len(entradas_departamentos):  # Verificar si el índice es válido
                 entrada = entradas_departamentos[index]
 
                 # Crear ventana de edición
                 ventana_edicion = tk.Toplevel(ventana_reporte)
                 ventana_edicion.title("Editar Entrada")
-                ventana_edicion.configure(bg="#E0F7FA")
+                ventana_edicion.configure(bg="#A9A9A9")
 
                 # Crear etiquetas y campos de entrada para cada columna
-                tk.Label(ventana_edicion, text="Producto:").grid(row=0, column=0)
+                tk.Label(ventana_edicion, text="Producto:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
                 entry_producto = tk.Entry(ventana_edicion)
-                entry_producto.grid(row=0, column=1)
+                entry_producto.grid(row=0, column=1, padx=5, pady=5)
                 entry_producto.insert(0, entrada["producto"])
 
-                tk.Label(ventana_edicion, text="Cantidad:").grid(row=1, column=0)
+                tk.Label(ventana_edicion, text="Cantidad:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
                 entry_cantidad = tk.Entry(ventana_edicion)
-                entry_cantidad.grid(row=1, column=1)
+                entry_cantidad.grid(row=1, column=1, padx=5, pady=5)
                 entry_cantidad.insert(0, entrada["cantidad"])
 
-                tk.Label(ventana_edicion, text="Fecha:").grid(row=2, column=0)
+                tk.Label(ventana_edicion, text="Fecha:", fg="#ffffff", bg="#A9A9A9").grid(row=2, column=0, padx=5, pady=5)
                 entry_fecha = tk.Entry(ventana_edicion)
-                entry_fecha.grid(row=2, column=1)
+                entry_fecha.grid(row=2, column=1, padx=5, pady=5)
                 entry_fecha.insert(0, entrada["fecha"])
 
-                tk.Label(ventana_edicion, text="Destino:").grid(row=3, column=0)
+                tk.Label(ventana_edicion, text="Destino:", fg="#ffffff", bg="#A9A9A9").grid(row=3, column=0, padx=5, pady=5)
                 entry_destino = tk.Entry(ventana_edicion)
-                entry_destino.grid(row=3, column=1)
+                entry_destino.grid(row=3, column=1, padx=5, pady=5)
                 entry_destino.insert(0, entrada["destino"])
 
                 # Función para guardar los cambios
                 def guardar_cambios():
                     entrada["producto"] = entry_producto.get()
-                    entrada["cantidad"] = int(entry_cantidad.get())
+                    try:
+                        entrada["cantidad"] = int(entry_cantidad.get())
+                    except ValueError:
+                        messagebox.showerror("Error", "Cantidad debe ser un número entero.")
+                        return
                     entrada["fecha"] = entry_fecha.get()
                     entrada["destino"] = entry_destino.get()
-                    # Formatear la fecha a una cadena legible
-                    fecha_str = entrada["fecha"].strftime("%d-%m-%Y") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
-                    tabla_entradas.item(seleccion, values=(entrada["producto"], entrada["cantidad"], fecha_str, entrada["destino"]))
+                    # Formatear la fecha a una cadena legible para la tabla
+                    fecha_str_tabla = entrada["fecha"].strftime("%Y-%m-%d") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
+                    tabla_entradas.item(seleccion, values=(entrada["producto"], entrada["cantidad"], fecha_str_tabla, entrada["destino"]))
                     ventana_edicion.destroy()
 
                 # Botón para guardar los cambios
-                tk.Button(ventana_edicion, text="Guardar", command=guardar_cambios).grid(row=4, column=0, columnspan=2)
+                ttk.Button(ventana_edicion, text="Guardar", command=guardar_cambios).grid(row=4, column=0, columnspan=2, pady=10)
             else:
                 messagebox.showerror("Error", "Índice de elemento no válido.")
 
-    # Función para imprimir el historial de entradas
-    def imprimir_entradas():
-        contenido = obtener_contenido_tabla(tabla_entradas)
-        imprimir_contenido(contenido)
-        messagebox.showinfo("Impresión", "Historial de entradas enviado a la impresora.")
+    def buscar_producto_abreviatura():
+        """Abre una ventana para buscar producto por abreviatura."""
+        ventana_busqueda_abreviatura = tk.Toplevel(ventana_reporte)
+        ventana_busqueda_abreviatura.title("Buscar Producto por Abreviatura")
+        ventana_busqueda_abreviatura.configure(bg="#A9A9A9")
+
+        tk.Label(ventana_busqueda_abreviatura, text="Ingrese abreviatura:", fg="#ffffff", bg="#A9A9A9").pack(padx=10, pady=10)
+        entry_abreviatura = ttk.Entry(ventana_busqueda_abreviatura)
+        entry_abreviatura.pack(padx=10, pady=5)
+
+        def filtrar_por_abreviatura(event):
+            abreviatura = entry_abreviatura.get().lower()
+            tabla_entradas.delete(*tabla_entradas.get_children())
+            for entrada in entradas_departamentos:
+                if abreviatura in entrada["producto"].lower():
+                    fecha_str = entrada["fecha"].strftime("%Y-%m-%d") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
+                    tabla_entradas.insert("", tk.END, values=(
+                        entrada["producto"],
+                        entrada["cantidad"],
+                        fecha_str,
+                        entrada["destino"]
+                    ))
+
+        entry_abreviatura.bind("<KeyRelease>", filtrar_por_abreviatura)
 
     # Crear menú contextual (clic derecho)
     menu_contextual = tk.Menu(ventana_reporte, tearoff=0)
     menu_contextual.add_command(label="Eliminar", command=eliminar_entrada)
     menu_contextual.add_command(label="Editar", command=editar_entrada)
-    menu_contextual.add_command(label="Imprimir", command=imprimir_entradas)
+    menu_contextual.add_command(label="Buscar por Abreviatura", command=buscar_producto_abreviatura)
 
     # Vincular el menú contextual al clic derecho
     def mostrar_menu_contextual(event):
-        menu_contextual.post(event.x_root, event.y_root)
+        item = tabla_entradas.identify_row(event.y)
+        if item:
+            tabla_entradas.selection_set(item)
+            menu_contextual.post(event.x_root, event.y_root)
 
     tabla_entradas.bind("<Button-3>", mostrar_menu_contextual)
-
-def obtener_contenido_tabla(tabla):
-    """Obtiene el contenido de una tabla Treeview como una cadena."""
-    contenido = ""
-    columnas = tabla["columns"]
-    contenido += "\t".join(columnas) + "\n"
-    for item in tabla.get_children():
-        valores = tabla.item(item, "values")
-        contenido += "\t".join(str(valor) for valor in valores) + "\n"
-    return contenido
-
-def imprimir_contenido(contenido):
-    """Imprime el contenido proporcionado."""
-    try:
-        impresora = win32print.GetDefaultPrinter()
-        hPrinter = win32print.OpenPrinter(impresora)
-        job = win32print.StartDocPrinter(hPrinter, 1, ("Reporte", None, "RAW"))
-        win32print.StartPagePrinter(hPrinter)
-        win32print.WritePrinter(hPrinter, contenido.encode("utf-8"))
-        win32print.EndPagePrinter(hPrinter)
-        win32print.EndDocPrinter(hPrinter)
-        win32print.ClosePrinter(hPrinter)
-    except Exception as e:
-        messagebox.showerror("Error de Impresión", f"No se pudo imprimir el reporte: {e}")
     
 
 
 def generar_reporte_salidas():
-    
     """Genera un reporte del historial de salidas."""
     ventana_reporte_salidas = tk.Toplevel(ventana)
     ventana_reporte_salidas.title("Reporte de Salidas")
+    ventana_reporte_salidas.geometry("900x500")
+    ventana_reporte_salidas.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
 
-    tree = ttk.Treeview(ventana_reporte_salidas, columns=("Producto", "Cantidad", "Fecha", "Destino", "Requisición"), show="headings")
-    tree.heading("Producto", text="Producto")
-    tree.heading("Cantidad", text="Cantidad")
-    tree.heading("Fecha", text="Fecha")
-    tree.heading("Destino", text="Destino")
-    tree.heading("Requisición", text="Requisición")
-    tree.grid(row=0, column=0, sticky="nsew")
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_reporte_salidas)
+    style.theme_use('clam')
+
+    style.configure("CustomLabel.TLabel",
+                    foreground="#ffffff",
+                    background="#A9A9A9",
+                    font=("Segoe UI", 10, "bold"))
+
+    style.configure("CustomEntry.TEntry",
+                    foreground="#000000",
+                    background="#ffffff",
+                    insertcolor="#000000",
+                    font=("Segoe UI", 10))
+
+    style.configure("Grid.Treeview",
+                    foreground="#000000",
+                    background="#ffffff",
+                    font=("Segoe UI", 10))
+    style.configure("Grid.Treeview.Heading",
+                    foreground="#000000",
+                    background="#d9d9d9",
+                    font=("Segoe UI", 10, "bold"))
+    style.map("Grid.Treeview",
+              background=[('selected', '#bddfff')],
+              foreground=[('selected', '#000000')])
+
+    tree = ttk.Treeview(ventana_reporte_salidas, columns=("Producto", "Cantidad", "Fecha", "Destino", "Requisición"), show="headings", style="Grid.Treeview")
+    tree.heading("Producto", text="Producto", anchor=tk.W)
+    tree.heading("Cantidad", text="Cantidad", anchor=tk.W)
+    tree.heading("Fecha", text="Fecha", anchor=tk.W)
+    tree.heading("Destino", text="Destino", anchor=tk.W)
+    tree.heading("Requisición", text="Requisición", anchor=tk.W)
+    tree.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
     scrollbar = ttk.Scrollbar(ventana_reporte_salidas, orient="vertical", command=tree.yview)
     tree.configure(yscrollcommand=scrollbar.set)
-    scrollbar.grid(row=0, column=1, sticky="ns")
+    scrollbar.grid(row=0, column=1, sticky="ns", pady=10)
 
     for salida in salidas_departamentos:
-        tree.insert("", "end", values=(salida["producto"], salida["cantidad"], salida["fecha"], salida["destino"], salida["requisicion"]))
+        fecha_str = salida["fecha"].strftime("%Y-%m-%d") if isinstance(salida["fecha"], datetime.date) else str(salida["fecha"])
+        tree.insert("", "end", values=(salida["producto"], salida["cantidad"], fecha_str, salida["destino"], salida["requisicion"]))
 
-    # Función para eliminar una salida
     def eliminar_salida():
         seleccion = tree.selection()
         if seleccion:
@@ -1213,7 +1317,6 @@ def generar_reporte_salidas():
             else:
                 messagebox.showerror("Error", "Índice de elemento no válido.")
 
-    # Función para editar una salida
     def editar_salida():
         seleccion = tree.selection()
         if seleccion:
@@ -1225,100 +1328,139 @@ def generar_reporte_salidas():
                 # Crear ventana de edición
                 ventana_edicion = tk.Toplevel(ventana_reporte_salidas)
                 ventana_edicion.title("Editar Salida")
+                ventana_edicion.configure(bg="#A9A9A9")
 
                 # Crear etiquetas y campos de entrada para cada columna
-                tk.Label(ventana_edicion, text="Producto:").grid(row=0, column=0)
+                tk.Label(ventana_edicion, text="Producto:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
                 entry_producto = tk.Entry(ventana_edicion)
-                entry_producto.grid(row=0, column=1)
+                entry_producto.grid(row=0, column=1, padx=5, pady=5)
                 entry_producto.insert(0, salida["producto"])
 
-                tk.Label(ventana_edicion, text="Cantidad:").grid(row=1, column=0)
+                tk.Label(ventana_edicion, text="Cantidad:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
                 entry_cantidad = tk.Entry(ventana_edicion)
-                entry_cantidad.grid(row=1, column=1)
+                entry_cantidad.grid(row=1, column=1, padx=5, pady=5)
                 entry_cantidad.insert(0, salida["cantidad"])
 
-                tk.Label(ventana_edicion, text="Fecha:").grid(row=2, column=0)
+                tk.Label(ventana_edicion, text="Fecha:", fg="#ffffff", bg="#A9A9A9").grid(row=2, column=0, padx=5, pady=5)
                 entry_fecha = tk.Entry(ventana_edicion)
-                entry_fecha.grid(row=2, column=1)
+                entry_fecha.grid(row=2, column=1, padx=5, pady=5)
                 entry_fecha.insert(0, salida["fecha"])
 
-                tk.Label(ventana_edicion, text="Destino:").grid(row=3, column=0)
+                tk.Label(ventana_edicion, text="Destino:", fg="#ffffff", bg="#A9A9A9").grid(row=3, column=0, padx=5, pady=5)
                 entry_destino = tk.Entry(ventana_edicion)
-                entry_destino.grid(row=3, column=1)
+                entry_destino.grid(row=3, column=1, padx=5, pady=5)
                 entry_destino.insert(0, salida["destino"])
 
-                tk.Label(ventana_edicion, text="Requisición:").grid(row=4, column=0)
+                tk.Label(ventana_edicion, text="Requisición:", fg="#ffffff", bg="#A9A9A9").grid(row=4, column=0, padx=5, pady=5)
                 entry_requisicion = tk.Entry(ventana_edicion)
-                entry_requisicion.grid(row=4, column=1)
+                entry_requisicion.grid(row=4, column=1, padx=5, pady=5)
                 entry_requisicion.insert(0, salida["requisicion"])
 
                 # Función para guardar los cambios
                 def guardar_cambios():
                     salida["producto"] = entry_producto.get()
-                    salida["cantidad"] = int(entry_cantidad.get())
+                    try:
+                        salida["cantidad"] = int(entry_cantidad.get())
+                    except ValueError:
+                        messagebox.showerror("Error", "Cantidad debe ser un número entero.")
+                        return
                     salida["fecha"] = entry_fecha.get()
                     salida["destino"] = entry_destino.get()
                     salida["requisicion"] = entry_requisicion.get()
-                    tree.item(seleccion, values=(salida["producto"], salida["cantidad"], salida["fecha"], salida["destino"], salida["requisicion"]))
+                    fecha_str_tabla = salida["fecha"].strftime("%Y-%m-%d") if isinstance(salida["fecha"], datetime.date) else str(salida["fecha"])
+                    tree.item(seleccion, values=(salida["producto"], salida["cantidad"], fecha_str_tabla, salida["destino"], salida["requisicion"]))
                     ventana_edicion.destroy()
 
                 # Botón para guardar los cambios
-                tk.Button(ventana_edicion, text="Guardar", command=guardar_cambios).grid(row=5, column=0, columnspan=2)
+                ttk.Button(ventana_edicion, text="Guardar", command=guardar_cambios).grid(row=5, column=0, columnspan=2, pady=10)
             else:
                 messagebox.showerror("Error", "Índice de elemento no válido.")
 
-    # Función para imprimir el historial de salidas
-    def imprimir_salidas():
-        contenido = obtener_contenido_tabla(tree)
-        imprimir_contenido(contenido)
-        messagebox.showinfo("Impresión", "Historial de salidas enviado a la impresora.")
+    def buscar_producto_abreviatura():
+        """Abre una ventana para buscar producto por abreviatura."""
+        ventana_busqueda_abreviatura = tk.Toplevel(ventana_reporte_salidas)
+        ventana_busqueda_abreviatura.title("Buscar Producto por Abreviatura")
+        ventana_busqueda_abreviatura.configure(bg="#A9A9A9")
+
+        tk.Label(ventana_busqueda_abreviatura, text="Ingrese abreviatura:", fg="#ffffff", bg="#A9A9A9").pack(padx=10, pady=10)
+        entry_abreviatura = ttk.Entry(ventana_busqueda_abreviatura)
+        entry_abreviatura.pack(padx=10, pady=5)
+
+        def filtrar_por_abreviatura(event):
+            abreviatura = entry_abreviatura.get().lower()
+            tree.delete(*tree.get_children())
+            for salida in salidas_departamentos:
+                if abreviatura in salida["producto"].lower():
+                    fecha_str = salida["fecha"].strftime("%Y-%m-%d") if isinstance(salida["fecha"], datetime.date) else str(salida["fecha"])
+                    tree.insert("", "end", values=(
+                        salida["producto"],
+                        salida["cantidad"],
+                        fecha_str,
+                        salida["destino"],
+                        salida["requisicion"]
+                    ))
+
+        entry_abreviatura.bind("<KeyRelease>", filtrar_por_abreviatura)
 
     # Crear menú contextual (clic derecho)
     menu_contextual = tk.Menu(ventana_reporte_salidas, tearoff=0)
     menu_contextual.add_command(label="Eliminar", command=eliminar_salida)
     menu_contextual.add_command(label="Editar", command=editar_salida)
-    menu_contextual.add_command(label="Imprimir", command=imprimir_salidas)
+    menu_contextual.add_command(label="Buscar por Abreviatura", command=buscar_producto_abreviatura)
 
     # Vincular el menú contextual al clic derecho
     def mostrar_menu_contextual(event):
-        menu_contextual.post(event.x_root, event.y_root)
+        item = tree.identify_row(event.y)
+        if item:
+            tree.selection_set(item)
+            menu_contextual.post(event.x_root, event.y_root)
 
     tree.bind("<Button-3>", mostrar_menu_contextual)
 
-def obtener_contenido_tabla(tabla):
-    """Obtiene el contenido de una tabla Treeview como una cadena."""
-    contenido = ""
-    columnas = tabla["columns"]
-    contenido += "\t".join(columnas) + "\n"
-    for item in tabla.get_children():
-        valores = tabla.item(item, "values")
-        contenido += "\t".join(str(valor) for valor in valores) + "\n"
-    return contenido
+    ventana_reporte_salidas.grid_columnconfigure(0, weight=1)
+    ventana_reporte_salidas.grid_rowconfigure(0, weight=1)
 
-def imprimir_contenido(contenido):
-    """Imprime el contenido proporcionado."""
-    try:
-        impresora = win32print.GetDefaultPrinter()
-        hPrinter = win32print.OpenPrinter(impresora)
-        job = win32print.StartDocPrinter(hPrinter, 1, ("Reporte", None, "RAW"))
-        win32print.StartPagePrinter(hPrinter)
-        win32print.WritePrinter(hPrinter, contenido.encode("utf-8"))
-        win32print.EndPagePrinter(hPrinter)
-        win32print.EndDocPrinter(hPrinter)
-        win32print.ClosePrinter(hPrinter)
-    except Exception as e:
-        messagebox.showerror("Error de Impresión", f"No se pudo imprimir el reporte: {e}")
+ventana_reporte_salidas_espera = None  # Variable global para la ventana del reporte de espera
+tabla_salidas_espera = None           # Variable global para la tabla
 
+def actualizar_tabla_salidas_espera():
+    """Actualiza el contenido de la tabla de salidas en espera."""
+    global tabla_salidas_espera
+    if tabla_salidas_espera:
+        tabla_salidas_espera.delete(*tabla_salidas_espera.get_children())
+        for salida in salidas_espera:
+            tabla_salidas_espera.insert("", tk.END, values=(
+                salida["producto"],
+                salida["cantidad"],
+                salida["departamento"],
+            ))
 
 def generar_reporte_salidas_espera():
-    """Genera un reporte del historial de salidas en espera."""
-    ventana_reporte = tk.Toplevel(ventana)
-    ventana_reporte.title("Reporte de Salidas en Espera")
-    ventana_reporte.geometry("600x400")
+    """Genera o trae al frente la ventana del reporte de salidas en espera."""
+    global ventana_reporte_salidas_espera, tabla_salidas_espera # Declarar tabla_salidas_espera como global
+
+    if ventana_reporte_salidas_espera and ventana_reporte_salidas_espera.winfo_exists():
+        ventana_reporte_salidas_espera.lift()  # Traer la ventana al frente
+        actualizar_tabla_salidas_espera()
+        return
+
+    ventana_reporte_salidas_espera = tk.Toplevel(ventana)
+    ventana_reporte_salidas_espera.title("Reporte de Salidas en Espera")
+    ventana_reporte_salidas_espera.geometry("700x500")
+    ventana_reporte_salidas_espera.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_reporte_salidas_espera)
+    style.theme_use('clam')
+    style.configure("CustomLabel.TLabel", foreground="#ffffff", background="#A9A9A9", font=("Segoe UI", 10, "bold"))
+    style.configure("CustomEntry.TEntry", foreground="#000000", background="#ffffff", insertcolor="#000000", font=("Segoe UI", 10))
+    style.configure("Grid.Treeview", foreground="#000000", background="#ffffff", font=("Segoe UI", 10))
+    style.configure("Grid.Treeview.Heading", foreground="#000000", background="#d9d9d9", font=("Segoe UI", 10, "bold"))
+    style.map("Grid.Treeview", background=[('selected', '#bddfff')], foreground=[('selected', '#000000')])
 
     # Treeview (tabla) para mostrar las salidas en espera
-    tabla_salidas_espera = ttk.Treeview(ventana_reporte, columns=("Producto", "Cantidad", "Departamento"), show="headings")
-    tabla_salidas_espera.pack(fill=tk.BOTH, expand=True)
+    tabla_salidas_espera = ttk.Treeview(ventana_reporte_salidas_espera, columns=("Producto", "Cantidad", "Departamento"), show="headings", style="Grid.Treeview")
+    tabla_salidas_espera.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     # Definir encabezados de columna
     tabla_salidas_espera.heading("Producto", text="Producto", anchor=tk.W)
@@ -1326,22 +1468,17 @@ def generar_reporte_salidas_espera():
     tabla_salidas_espera.heading("Departamento", text="Departamento", anchor=tk.W)
 
     # Configurar ancho de columnas
-    tabla_salidas_espera.column("Producto", width=150)
-    tabla_salidas_espera.column("Cantidad", width=80)
-    tabla_salidas_espera.column("Departamento", width=150)
+    tabla_salidas_espera.column("Producto", width=200)
+    tabla_salidas_espera.column("Cantidad", width=100)
+    tabla_salidas_espera.column("Departamento", width=200)
 
     # Barras de desplazamiento
-    scrollbar_vertical = ttk.Scrollbar(ventana_reporte, orient="vertical", command=tabla_salidas_espera.yview)
-    scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y)
+    scrollbar_vertical = ttk.Scrollbar(ventana_reporte_salidas_espera, orient="vertical", command=tabla_salidas_espera.yview)
+    scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=10)
     tabla_salidas_espera.configure(yscrollcommand=scrollbar_vertical.set)
 
-    # Insertar datos en la tabla
-    for salida in salidas_espera:
-        tabla_salidas_espera.insert("", tk.END, values=(
-            salida["producto"],
-            salida["cantidad"],
-            salida["departamento"],
-        ))
+    # Insertar datos iniciales en la tabla
+    actualizar_tabla_salidas_espera()
 
     # Función para agregar número de requisición
     def agregar_requisicion():
@@ -1376,36 +1513,34 @@ def generar_reporte_salidas_espera():
                         messagebox.showerror("Error", "Cantidad inválida. Debe ser un número entero.")
                         return
 
-                    print("Diccionario a eliminar:", diccionario_a_eliminar)
-
                     for i, salida_espera in enumerate(salidas_espera):
-                        print("Salida en espera:", salida_espera)
                         if (salida_espera["producto"] == diccionario_a_eliminar["producto"] and
                                 salida_espera["cantidad"] == diccionario_a_eliminar["cantidad"] and
                                 salida_espera["departamento"] == diccionario_a_eliminar["departamento"]):
                             del salidas_espera[i]
-                            print("Producto eliminado de salidas_espera.")
                             break
 
                     guardar_datos()
-                    generar_reporte_salidas_espera()
+                    tabla_salidas_espera.delete(item_seleccionado)  # Eliminar la fila seleccionada
+                    actualizar_tabla_salidas_espera()  # Actualizar la tabla existente
 
                     if ventana_requisicion.winfo_exists():
                         ventana_requisicion.destroy()
 
-                ventana_requisicion = tk.Toplevel(ventana_reporte)
+                ventana_requisicion = tk.Toplevel(ventana_reporte_salidas_espera) # Usar la ventana existente como parent
                 ventana_requisicion.title("Agregar Requisición y Fecha")
+                ventana_requisicion.configure(bg="#A9A9A9")
 
-                tk.Label(ventana_requisicion, text="Número de Requisición:").grid(row=0, column=0)
-                entry_requisicion = tk.Entry(ventana_requisicion)
-                entry_requisicion.grid(row=0, column=1)
+                tk.Label(ventana_requisicion, text="Número de Requisición:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
+                entry_requisicion = ttk.Entry(ventana_requisicion)
+                entry_requisicion.grid(row=0, column=1, padx=5, pady=5)
 
-                tk.Label(ventana_requisicion, text="Fecha de Salida:").grid(row=1, column=0)
-                entry_fecha = tk.Entry(ventana_requisicion)
-                entry_fecha.grid(row=1, column=1)
-                tk.Button(ventana_requisicion, text="Calendario", command=lambda: abrir_calendario(entry_fecha)).grid(row=1, column=2)
+                tk.Label(ventana_requisicion, text="Fecha de Salida:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
+                entry_fecha = ttk.Entry(ventana_requisicion)
+                entry_fecha.grid(row=1, column=1, padx=5, pady=5)
+                ttk.Button(ventana_requisicion, text="Calendario", command=lambda: abrir_calendario(ventana_requisicion, entry_fecha)).grid(row=1, column=2, padx=5, pady=5)
 
-                tk.Button(ventana_requisicion, text="Confirmar", command=confirmar_requisicion).grid(row=2, column=0, columnspan=3)
+                ttk.Button(ventana_requisicion, text="Confirmar", command=confirmar_requisicion).grid(row=2, column=0, columnspan=3, pady=10)
             else:
                 messagebox.showerror("Error", "Datos de producto incompletos.")
         else:
@@ -1419,7 +1554,7 @@ def generar_reporte_salidas_espera():
             index = tabla_salidas_espera.index(item_id)
             if 0 <= index < len(salidas_espera):
                 del salidas_espera[index]
-                tabla_salidas_espera.delete(item_id)
+                actualizar_tabla_salidas_espera()
             else:
                 messagebox.showerror("Error", "Índice de elemento no válido.")
 
@@ -1433,68 +1568,85 @@ def generar_reporte_salidas_espera():
                 salida = salidas_espera[index]
 
                 # Crear ventana de edición
-                ventana_edicion = tk.Toplevel(ventana_reporte)
+                ventana_edicion = tk.Toplevel(ventana_reporte_salidas_espera) # Usar la ventana existente como parent
                 ventana_edicion.title("Editar Salida en Espera")
+                ventana_edicion.configure(bg="#A9A9A9")
 
                 # Crear etiquetas y campos de entrada para cada columna
-                tk.Label(ventana_edicion, text="Producto:").grid(row=0, column=0)
-                entry_producto = tk.Entry(ventana_edicion)
-                entry_producto.grid(row=0, column=1)
+                tk.Label(ventana_edicion, text="Producto:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
+                entry_producto = ttk.Entry(ventana_edicion)
+                entry_producto.grid(row=0, column=1, padx=5, pady=5)
                 entry_producto.insert(0, salida["producto"])
 
-                tk.Label(ventana_edicion, text="Cantidad:").grid(row=1, column=0)
-                entry_cantidad = tk.Entry(ventana_edicion)
-                entry_cantidad.grid(row=1, column=1)
+                tk.Label(ventana_edicion, text="Cantidad:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
+                entry_cantidad = ttk.Entry(ventana_edicion)
+                entry_cantidad.grid(row=1, column=1, padx=5, pady=5)
                 entry_cantidad.insert(0, salida["cantidad"])
 
-                tk.Label(ventana_edicion, text="Departamento:").grid(row=2, column=0)
-                entry_departamento = tk.Entry(ventana_edicion)
-                entry_departamento.grid(row=2, column=1)
+                tk.Label(ventana_edicion, text="Departamento:", fg="#ffffff", bg="#A9A9A9").grid(row=2, column=0, padx=5, pady=5)
+                entry_departamento = ttk.Entry(ventana_edicion)
+                entry_departamento.grid(row=2, column=1, padx=5, pady=5)
                 entry_departamento.insert(0, salida["departamento"])
 
                 # Función para guardar los cambios
                 def guardar_cambios():
                     salida["producto"] = entry_producto.get()
-                    salida["cantidad"] = int(entry_cantidad.get())
+                    try:
+                        salida["cantidad"] = int(entry_cantidad.get())
+                    except ValueError:
+                        messagebox.showerror("Error", "Cantidad inválida. Debe ser un número entero.")
+                        return
                     salida["departamento"] = entry_departamento.get()
                     tabla_salidas_espera.item(seleccion, values=(salida["producto"], salida["cantidad"], salida["departamento"]))
                     ventana_edicion.destroy()
+                    actualizar_tabla_salidas_espera() # Actualizar la tabla principal
 
                 # Botón para guardar los cambios
-                tk.Button(ventana_edicion, text="Guardar", command=guardar_cambios).grid(row=3, column=0, columnspan=2)
+                ttk.Button(ventana_edicion, text="Guardar", command=guardar_cambios).grid(row=3, column=0, columnspan=2, pady=10)
             else:
                 messagebox.showerror("Error", "Índice de elemento no válido.")
 
-    # Función para imprimir el historial de salidas en espera
-    def imprimir_salidas_espera():
-        contenido = obtener_contenido_tabla(tabla_salidas_espera)
-        imprimir_contenido(contenido)
-        messagebox.showinfo("Impresión", "Historial de salidas en espera enviado a la impresora.")
+    def buscar_producto_abreviatura():
+        """Abre una ventana para buscar producto por abreviatura."""
+        ventana_busqueda_abreviatura = tk.Toplevel(ventana_reporte_salidas_espera) # Usar la ventana existente como parent
+        ventana_busqueda_abreviatura.title("Buscar Producto por Abreviatura")
+        ventana_busqueda_abreviatura.configure(bg="#A9A9A9")
+
+        tk.Label(ventana_busqueda_abreviatura, text="Ingrese abreviatura:", fg="#ffffff", bg="#A9A9A9").pack(padx=10, pady=10)
+        entry_abreviatura = ttk.Entry(ventana_busqueda_abreviatura)
+        entry_abreviatura.pack(padx=10, pady=5)
+
+        def filtrar_por_abreviatura(event):
+            abreviatura = entry_abreviatura.get().lower()
+            tabla_salidas_espera.delete(*tabla_salidas_espera.get_children())
+            for salida in salidas_espera:
+                if abreviatura in salida["producto"].lower():
+                    tabla_salidas_espera.insert("", tk.END, values=(
+                        salida["producto"],
+                        salida["cantidad"],
+                        salida["departamento"],
+                    ))
+
+        entry_abreviatura.bind("<KeyRelease>", filtrar_por_abreviatura)
 
     # Crear menú contextual (clic derecho)
-    menu_contextual = tk.Menu(ventana_reporte, tearoff=0)
+    menu_contextual = tk.Menu(ventana_reporte_salidas_espera, tearoff=0)
     menu_contextual.add_command(label="Eliminar", command=eliminar_salida_espera)
     menu_contextual.add_command(label="Editar", command=editar_salida_espera)
-    menu_contextual.add_command(label="Imprimir", command=imprimir_salidas_espera)
     menu_contextual.add_command(label="Agregar Requisición", command=agregar_requisicion)
+    menu_contextual.add_command(label="Buscar por Abreviatura", command=buscar_producto_abreviatura)
 
     # Vincular el menú contextual al clic derecho
     def mostrar_menu_contextual(event):
-        menu_contextual.post(event.x_root, event.y_root)
+        item = tabla_salidas_espera.identify_row(event.y)
+        if item:
+            tabla_salidas_espera.selection_set(item)
+            menu_contextual.post(event.x_root, event.y_root)
 
     tabla_salidas_espera.bind("<Button-3>", mostrar_menu_contextual)
 
-    ventana_reporte.mainloop()
-
-def obtener_contenido_tabla(tabla):
-    """Obtiene el contenido de una tabla Treeview como una cadena."""
-    contenido = ""
-    columnas = tabla["columns"]
-    contenido += "\t".join(columnas) + "\n"
-    for item in tabla.get_children():
-        valores = tabla.item(item, "values")
-        contenido += "\t".join(str(valor) for valor in valores) + "\n"
-    return contenido
+    ventana_reporte_salidas_espera.grid_columnconfigure(0, weight=1)
+    ventana_reporte_salidas_espera.grid_rowconfigure(0, weight=1)
 
 
 
@@ -1502,19 +1654,40 @@ def ventana_reportes():
     """Crea una ventana para generar reportes con opciones de filtrado y nuevos reportes."""
     ventana_reporte = tk.Toplevel()
     ventana_reporte.title("Generar Reportes")
+    ventana_reporte.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_reporte)
+    style.theme_use('clam')
+    style.configure("CustomLabel.TLabel", foreground="#ffffff", background="#A9A9A9", font=("Segoe UI", 10, "bold"))
+    style.configure("CustomEntry.TEntry", foreground="#000000", background="#ffffff", insertcolor="#000000", font=("Segoe UI", 10))
+    style.configure("TCombobox", foreground="#000000", background="#ffffff", font=("Segoe UI", 10))
+    style.configure("TButton", font=("Segoe UI", 10))
+    style.configure("Small.TButton", font=("Segoe UI", 8)) # Define un estilo más pequeño
+    style.configure("Grid.Treeview", foreground="#000000", background="#ffffff", font=("Segoe UI", 10))
+    style.configure("Grid.Treeview.Heading", foreground="#000000", background="#d9d9d9", font=("Segoe UI", 10, "bold"))
+    style.map("Grid.Treeview", background=[('selected', '#bddfff')], foreground=[('selected', '#000000')])
+    style.configure("TFrame", background="#A9A9A9") # Estilo para los frames
+
+    # Marco principal para centrar el contenido
+    main_frame = ttk.Frame(ventana_reporte, style="TFrame")
+    main_frame.pack(padx=20, pady=20, fill="both", expand=True)
+    main_frame.grid_columnconfigure(0, weight=1) # Para centrar horizontalmente
 
     # Marcos para organizar los widgets
-    frame_filtros = ttk.Frame(ventana_reporte)
-    frame_filtros.pack(padx=10, pady=10)
+    frame_filtros = ttk.Frame(main_frame, style="TFrame")
+    frame_filtros.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
 
-    frame_tabla = ttk.Frame(ventana_reporte)
-    frame_tabla.pack(padx=10, pady=10)
+    frame_tabla = ttk.Frame(main_frame, style="TFrame")
+    frame_tabla.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+    frame_tabla.grid_rowconfigure(0, weight=1)
+    frame_tabla.grid_columnconfigure(0, weight=1)
 
     # --- Filtro por Categoría con Selección de Lapso ---
-    label_categoria = ttk.Label(frame_filtros, text="Filtrar por Categoría:")
+    label_categoria = ttk.Label(frame_filtros, text="Filtrar por Categoría:", style="CustomLabel.TLabel")
     label_categoria.grid(row=0, column=0, padx=5, pady=5, sticky="w")
     categorias = ["Todas"] + sorted(list(set(datos["categoria"] for datos in inventario.values())))
-    categoria_seleccionada = ttk.Combobox(frame_filtros, values=categorias)
+    categoria_seleccionada = ttk.Combobox(frame_filtros, values=categorias, style="TCombobox", width=20)
     categoria_seleccionada.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
     categoria_seleccionada.set("Todas")
 
@@ -1525,42 +1698,46 @@ def ventana_reportes():
 
     def seleccionar_fecha_inicio_cat():
         top = tk.Toplevel(ventana_reporte)
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
+        top.configure(bg="#A9A9A9")
+        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd', background="#ffffff", foreground="#000000", bordercolor="#d9d9d9", selectbackground="#bddfff", selectforeground="#000000")
         cal.pack(padx=10, pady=10)
         def grabar_fecha():
             fecha_inicio_cat.set(cal.get_date())
             label_fecha_inicio_seleccionada_cat.config(text="Inicio: " + fecha_inicio_cat.get())
             top.destroy()
-        ttk.Button(top, text="Seleccionar", command=grabar_fecha).pack(pady=5)
+        boton_seleccionar = ttk.Button(top, text="Seleccionar", command=grabar_fecha)
+        boton_seleccionar.pack(pady=5)
 
     def seleccionar_fecha_fin_cat():
         top = tk.Toplevel(ventana_reporte)
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
+        top.configure(bg="#A9A9A9")
+        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd', background="#ffffff", foreground="#000000", bordercolor="#d9d9d9", selectbackground="#bddfff", selectforeground="#000000")
         cal.pack(padx=10, pady=10)
         def grabar_fecha():
             fecha_fin_cat.set(cal.get_date())
             label_fecha_fin_seleccionada_cat.config(text="Fin: " + fecha_fin_cat.get())
             top.destroy()
-        ttk.Button(top, text="Seleccionar", command=grabar_fecha).pack(pady=5)
+        boton_seleccionar = ttk.Button(top, text="Seleccionar", command=grabar_fecha)
+        boton_seleccionar.pack(pady=5)
 
     boton_fecha_inicio_cat = ttk.Button(frame_filtros, text="Inicio", command=seleccionar_fecha_inicio_cat)
     boton_fecha_inicio_cat.grid(row=0, column=2, padx=5, pady=5)
-    label_fecha_inicio_seleccionada_cat = ttk.Label(frame_filtros, text="Inicio: --")
+    label_fecha_inicio_seleccionada_cat = ttk.Label(frame_filtros, text="Inicio: --", style="CustomLabel.TLabel")
     label_fecha_inicio_seleccionada_cat.grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
     boton_fecha_fin_cat = ttk.Button(frame_filtros, text="Fin", command=seleccionar_fecha_fin_cat)
     boton_fecha_fin_cat.grid(row=0, column=4, padx=5, pady=5)
-    label_fecha_fin_seleccionada_cat = ttk.Label(frame_filtros, text="Fin: --")
+    label_fecha_fin_seleccionada_cat = ttk.Label(frame_filtros, text="Fin: --", style="CustomLabel.TLabel")
     label_fecha_fin_seleccionada_cat.grid(row=0, column=5, padx=5, pady=5, sticky="w")
 
     lista_de_departamentos_completa = ["OTIC", "Oficina de Gestion Administrativa", "Oficina Contabilidad", "Oficina Compras", "Oficina de Bienes", "Direccion de Servicios Generales y Transporte", "Oficina de Seguimiento y Proyectos Estructurales", "Direccion General de Planificacion Estrategica", "Planoteca", "Biblioteca", "Direccion General de Seguimiento de Proyectos", "Gestion Participativa Parque la isla", "Oficina de Atencion ciudadana", "Oficina de gestion Humana", "Presidencia", "Secretaria General", "Consultoria Juridica", "Oficina de Planificacion y Presupuesto", "Auditoria", "Direccion de informacion y Comunicacion", "Direccion General de Formacion"]
     lista_de_departamentos_completa.sort()
 
-    label_departamento = ttk.Label(frame_filtros, text="Filtrar por Departamento:")
+    label_departamento = ttk.Label(frame_filtros, text="Filtrar por Departamento:", style="CustomLabel.TLabel")
     label_departamento.grid(row=1, column=0, padx=5, pady=5, sticky="w")
 
     lista_departamentos_reporte = ["Todos"] + lista_de_departamentos_completa
-    departamento_seleccionado = ttk.Combobox(frame_filtros, values=lista_departamentos_reporte)
+    departamento_seleccionado = ttk.Combobox(frame_filtros, values=lista_departamentos_reporte, style="TCombobox", width=30)
     departamento_seleccionado.grid(row=1, column=1, padx=5, pady=5, sticky="ew")
     departamento_seleccionado.set("Todos")
 
@@ -1571,39 +1748,43 @@ def ventana_reportes():
 
     def seleccionar_fecha_inicio_dep():
         top = tk.Toplevel(ventana_reporte)
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
+        top.configure(bg="#A9A9A9")
+        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd', background="#ffffff", foreground="#000000", bordercolor="#d9d9d9", selectbackground="#bddfff", selectforeground="#000000")
         cal.pack(padx=10, pady=10)
         def grabar_fecha():
             fecha_inicio_dep.set(cal.get_date())
             label_fecha_inicio_seleccionada_dep.config(text="Inicio: " + fecha_inicio_dep.get())
             top.destroy()
-        ttk.Button(top, text="Seleccionar", command=grabar_fecha).pack(pady=5)
+        boton_seleccionar = ttk.Button(top, text="Seleccionar", command=grabar_fecha)
+        boton_seleccionar.pack(pady=5)
 
     def seleccionar_fecha_fin_dep():
         top = tk.Toplevel(ventana_reporte)
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
+        top.configure(bg="#A9A9A9")
+        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd', background="#ffffff", foreground="#000000", bordercolor="#d9d9d9", selectbackground="#bddfff", selectforeground="#000000")
         cal.pack(padx=10, pady=10)
         def grabar_fecha():
             fecha_fin_dep.set(cal.get_date())
             label_fecha_fin_seleccionada_dep.config(text="Fin: " + fecha_fin_dep.get())
             top.destroy()
-        ttk.Button(top, text="Seleccionar", command=grabar_fecha).pack(pady=5)
+        boton_seleccionar = ttk.Button(top, text="Seleccionar", command=grabar_fecha)
+        boton_seleccionar.pack(pady=5)
 
     boton_fecha_inicio_dep = ttk.Button(frame_filtros, text="Inicio", command=seleccionar_fecha_inicio_dep)
     boton_fecha_inicio_dep.grid(row=1, column=2, padx=5, pady=5)
-    label_fecha_inicio_seleccionada_dep = ttk.Label(frame_filtros, text="Inicio: --")
+    label_fecha_inicio_seleccionada_dep = ttk.Label(frame_filtros, text="Inicio: --", style="CustomLabel.TLabel")
     label_fecha_inicio_seleccionada_dep.grid(row=1, column=3, padx=5, pady=5, sticky="w")
 
     boton_fecha_fin_dep = ttk.Button(frame_filtros, text="Fin", command=seleccionar_fecha_fin_dep)
     boton_fecha_fin_dep.grid(row=1, column=4, padx=5, pady=5)
-    label_fecha_fin_seleccionada_dep = ttk.Label(frame_filtros, text="Fin: --")
+    label_fecha_fin_seleccionada_dep = ttk.Label(frame_filtros, text="Fin: --", style="CustomLabel.TLabel")
     label_fecha_fin_seleccionada_dep.grid(row=1, column=5, padx=5, pady=5, sticky="w")
 
     # --- Filtro por Stock Dinámico ---
-    label_stock = ttk.Label(frame_filtros, text="Filtrar por Stock:")
+    label_stock = ttk.Label(frame_filtros, text="Filtrar por Stock:", style="CustomLabel.TLabel")
     label_stock.grid(row=2, column=0, padx=5, pady=5, sticky="w")
     opciones_stock = ["Todos", "Bajo Stock (<= 2)", "Stock Medio (3-10)", "Stock Alto (>= 11)"]
-    stock_seleccionado = ttk.Combobox(frame_filtros, values=opciones_stock, width=25)
+    stock_seleccionado = ttk.Combobox(frame_filtros, values=opciones_stock, style="TCombobox", width=25)
     stock_seleccionado.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
     stock_seleccionado.set("Todos")
 
@@ -1614,61 +1795,47 @@ def ventana_reportes():
 
     def seleccionar_fecha_inicio_stock():
         top = tk.Toplevel(ventana_reporte)
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
+        top.configure(bg="#A9A9A9")
+        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd', background="#ffffff", foreground="#000000", bordercolor="#d9d9d9", selectbackground="#bddfff", selectforeground="#000000")
         cal.pack(padx=10, pady=10)
         def grabar_fecha():
             fecha_inicio_stock.set(cal.get_date())
             label_fecha_inicio_seleccionada_stock.config(text="Inicio: " + fecha_inicio_stock.get())
             top.destroy()
-        ttk.Button(top, text="Seleccionar", command=grabar_fecha).pack(pady=5)
+        boton_seleccionar = ttk.Button(top, text="Seleccionar", command=grabar_fecha)
+        boton_seleccionar.pack(pady=5)
 
     def seleccionar_fecha_fin_stock():
         top = tk.Toplevel(ventana_reporte)
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
+        top.configure(bg="#A9A9A9")
+        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd', background="#ffffff", foreground="#000000", bordercolor="#d9d9d9", selectbackground="#bddfff", selectforeground="#000000")
         cal.pack(padx=10, pady=10)
         def grabar_fecha():
             fecha_fin_stock.set(cal.get_date())
             label_fecha_fin_seleccionada_stock.config(text="Fin: " + fecha_fin_stock.get())
             top.destroy()
-        ttk.Button(top, text="Seleccionar", command=grabar_fecha).pack(pady=5)
+        boton_seleccionar = ttk.Button(top, text="Seleccionar", command=grabar_fecha)
+        boton_seleccionar.pack(pady=5)
 
     boton_fecha_inicio_stock = ttk.Button(frame_filtros, text="Inicio", command=seleccionar_fecha_inicio_stock)
     boton_fecha_inicio_stock.grid(row=2, column=2, padx=5, pady=5)
-    label_fecha_inicio_seleccionada_stock = ttk.Label(frame_filtros, text="Inicio: --")
+    label_fecha_inicio_seleccionada_stock = ttk.Label(frame_filtros, text="Inicio: --", style="CustomLabel.TLabel")
     label_fecha_inicio_seleccionada_stock.grid(row=2, column=3, padx=5, pady=5, sticky="w")
 
     boton_fecha_fin_stock = ttk.Button(frame_filtros, text="Fin", command=seleccionar_fecha_fin_stock)
     boton_fecha_fin_stock.grid(row=2, column=4, padx=5, pady=5)
-    label_fecha_fin_seleccionada_stock = ttk.Label(frame_filtros, text="Fin: --")
+    label_fecha_fin_seleccionada_stock = ttk.Label(frame_filtros, text="Fin: --", style="CustomLabel.TLabel")
     label_fecha_fin_seleccionada_stock.grid(row=2, column=5, padx=5, pady=5, sticky="w")
 
-    
-
     global tabla_reporte
-    tabla_reporte = ttk.Treeview(frame_tabla)
+    tabla_reporte = ttk.Treeview(frame_tabla, style="Grid.Treeview")
     tabla_reporte.pack(fill="both", expand=True)
-
-    def seleccionar_fecha(parent, variable_fecha, label_fecha):
-        top = tk.Toplevel(parent)
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd')
-        cal.pack(padx=10, pady=10)
-        def grabar_fecha():
-            variable_fecha.set(cal.get_date())
-            label_fecha.config(text=cal.get_date())
-            top.destroy()
-        ttk.Button(top, text="Seleccionar", command=grabar_fecha).pack(pady=5)
-
-   # --- Botón Limpiar Tabla (Reubicado y con estilo) ---
-    style = ttk.Style()
-    style.configure("Small.TButton", font=("Arial", 8)) # Define un estilo más pequeño
 
     def limpiar_tabla_reporte():
         tabla_reporte.delete(*tabla_reporte.get_children())
 
     boton_limpiar = ttk.Button(frame_tabla, text="Limpiar", command=limpiar_tabla_reporte, style="Small.TButton")
-    boton_limpiar.pack(side="top", anchor="ne", padx=5, pady=5) # Arriba a la derecha
-
-
+    boton_limpiar.pack(side="bottom", anchor="se", padx=10, pady=10) # Abajo a la derecha
 
     def generar_reporte():
         categoria = categoria_seleccionada.get()
@@ -1685,12 +1852,18 @@ def ventana_reportes():
             generar_reporte_consumo_lapso_filtrado(categoria, fecha_inicio_cat_str, fecha_fin_cat_str, departamento, stock, tabla_reporte, ventana_reporte)
 
     boton_generar_filtrado = ttk.Button(frame_filtros, text="Generar Reporte Filtrado", command=generar_reporte)
-    boton_generar_filtrado.grid(row=8, column=0, columnspan=6, pady=10)
+    boton_generar_filtrado.grid(row=3, column=0, columnspan=6, pady=10)
 
-    boton_pdf = ttk.Button(ventana_reporte, text="Exportar a PDF", command=lambda: exportar_tabla_pdf(tabla_reporte))
-    boton_pdf.pack(pady=10)
+    boton_pdf = ttk.Button(main_frame, text="Exportar a PDF", command=lambda: exportar_tabla_pdf(tabla_reporte))
+    boton_pdf.grid(row=2, column=0, pady=10)
+    boton_pdf.anchor(tk.CENTER)
 
+    # Configuración de pesos para el frame de filtros para que se expanda con la ventana
+    for i in range(6):
+        frame_filtros.grid_columnconfigure(i, weight=1)
 
+    # Configuración de pesos para el frame de la tabla para que se expanda
+    frame_tabla.grid_columnconfigure(0, weight=1)
 
 def generar_reporte_consumo_lapso_filtrado(categoria_filtro, fecha_inicio_str, fecha_fin_str, departamento, stock_filtro_texto, tabla, ventana):
     """Genera un reporte de consumo por lapso, filtrado por categoría, departamento y stock."""
@@ -1923,7 +2096,7 @@ def exportar_tabla_pdf(tabla_treeview):
     def draw_membrete(canvas, doc):
         """Dibuja el membrete en la parte superior de la página y lo centra."""
         try:
-            img = Image.open("C:/Users/monster/Desktop/src/server/routes/imagenes/OFICIOS-CORPOANDES.PNG")
+            img = PImage.open("C:/Users/monster/Desktop/src/server/routes/imagenes/OFICIOS-CORPOANDES.PNG")
             img_width, img_height = img.size
             aspect = img_height / float(img_width)
             desired_width = 8 * units.inch  # Cubre casi todo el ancho
@@ -1936,7 +2109,7 @@ def exportar_tabla_pdf(tabla_treeview):
             canvas.drawString(doc.leftMargin, doc.height - units.inch, "Error: Membrete no encontrado.")
 
     try:
-        img = Image.open("C:/Users/monster/Desktop/src/server/routes/imagenes/OFICIOS-CORPOANDES.PNG")
+        img = PImage.open("C:/Users/monster/Desktop/src/server/routes/imagenes/OFICIOS-CORPOANDES.PNG")
         img_width, img_height = img.size
         aspect = img_height / float(img_width)
         desired_width = 8 * units.inch  # Cubre casi todo el ancho
@@ -1966,6 +2139,12 @@ def exportar_tabla_pdf(tabla_treeview):
 
 
 
+
+
+
+
+
+
     
 
 
@@ -1974,13 +2153,22 @@ def configuracion():
     """Abre una ventana de configuración para ajustar unidades de medida y umbrales."""
     ventana_config = tk.Toplevel(ventana)
     ventana_config.title("Configuración")
+    ventana_config.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_config)
+    style.theme_use('clam')
+    style.configure("CustomLabel.TLabel", foreground="#ffffff", background="#A9A9A9", font=("Segoe UI", 10, "bold"))
+    style.configure("CustomEntry.TEntry", foreground="#000000", background="#ffffff", insertcolor="#000000", font=("Segoe UI", 10))
+    style.configure("TCombobox", foreground="#000000", background="#ffffff", font=("Segoe UI", 10))
+    style.configure("TCheckbutton", foreground="#ffffff", background="#A9A9A9", font=("Segoe UI", 10))
+    style.configure("TButton", font=("Segoe UI", 10))
+    style.configure("TFrame", background="#A9A9A9") # Estilo para los frames
 
     # Variables para almacenar la configuración
     formato_fecha_var = tk.StringVar(ventana_config)
     notificaciones_var = tk.IntVar(ventana_config)
     tema_color_var = tk.StringVar(ventana_config)
-
-    
 
     # Cargar configuración actual (si existe)
     try:
@@ -1995,16 +2183,38 @@ def configuracion():
         notificaciones_var.set(0)
         tema_color_var.set("Claro")
 
+    # Marco principal para centrar el contenido
+    main_frame = ttk.Frame(ventana_config, style="TFrame")
+    main_frame.pack(padx=20, pady=20, fill="both", expand=True)
+    main_frame.grid_columnconfigure(0, weight=1)
+
+    # Marco para los controles de configuración
+    config_frame = ttk.Frame(main_frame, style="TFrame")
+    config_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
+    config_frame.columnconfigure(0, weight=1)
+    config_frame.columnconfigure(1, weight=1)
+
     # Interfaz de configuración
-    tk.Label(ventana_config, text="Formato de Fecha:").grid(row=0, column=0, sticky="w")
+    label_formato_fecha = ttk.Label(config_frame, text="Formato de Fecha:", style="CustomLabel.TLabel")
+    label_formato_fecha.grid(row=0, column=0, sticky="w", padx=5, pady=5)
     formatos_fecha = ["YYYY-MM-DD", "DD-MM-YYYY", "MM/DD/YYYY"]
-    ttk.Combobox(ventana_config, textvariable=formato_fecha_var, values=formatos_fecha).grid(row=0, column=1)
+    combo_formato_fecha = ttk.Combobox(config_frame, textvariable=formato_fecha_var, values=formatos_fecha, style="TCombobox")
+    combo_formato_fecha.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
 
-    tk.Checkbutton(ventana_config, text="Notificaciones de Bajo Stock", variable=notificaciones_var).grid(row=1, column=0, columnspan=2, sticky="w")
+    check_notificaciones = ttk.Checkbutton(config_frame, text="Notificaciones de Bajo Stock", variable=notificaciones_var, style="TCheckbutton")
+    check_notificaciones.grid(row=1, column=0, columnspan=2, sticky="w", padx=5, pady=5)
 
-    tk.Label(ventana_config, text="Tema de Color:").grid(row=2, column=0, sticky="w")
+    label_tema_color = ttk.Label(config_frame, text="Tema de Color:", style="CustomLabel.TLabel")
+    label_tema_color.grid(row=2, column=0, sticky="w", padx=5, pady=5)
     temas_color = ["Claro", "Oscuro", "Azul", "Verde", "Rojo", "Amarillo", "Morado"]
-    ttk.Combobox(ventana_config, textvariable=tema_color_var, values=temas_color).grid(row=2, column=1)
+    combo_tema_color = ttk.Combobox(config_frame, textvariable=tema_color_var, values=temas_color, style="TCombobox")
+    combo_tema_color.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+
+    # Marco para los botones de copia de seguridad y restaurar
+    backup_restore_frame = ttk.Frame(main_frame, style="TFrame")
+    backup_restore_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
+    backup_restore_frame.columnconfigure(0, weight=1)
+    backup_restore_frame.columnconfigure(1, weight=1)
 
     # Botón "Copia de Seguridad"
     def realizar_copia_seguridad():
@@ -2012,38 +2222,50 @@ def configuracion():
             fecha_hora = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             nombre_copia_seguridad = f"inventario_backup_{fecha_hora}.json"
             shutil.copy2("inventario.json", nombre_copia_seguridad)
-            messagebox.showinfo("Copia de Seguridad", f"Copia de seguridad creada: {nombre_copia_seguridad}")
+            messagebox.showinfo("Copia de Seguridad", f"Copia de seguridad creada: {nombre_copia_seguridad}", parent=ventana_config)
         except Exception as e:
-            messagebox.showerror("Error", f"Error al crear la copia de seguridad: {e}")
+            messagebox.showerror("Error", f"Error al crear la copia de seguridad: {e}", parent=ventana_config)
 
-    tk.Button(ventana_config, text="Copia de Seguridad", command=realizar_copia_seguridad).grid(row=3, column=0, columnspan=2, pady=10)
+    btn_copia_seguridad = ttk.Button(backup_restore_frame, text="Copia de Seguridad", command=realizar_copia_seguridad)
+    btn_copia_seguridad.grid(row=0, column=0, pady=5, padx=5, sticky="ew")
 
     # Botón "Restaurar"
     def restaurar_copia_seguridad():
         try:
             archivos_copia_seguridad = [f for f in os.listdir() if f.startswith("inventario_backup_")]
             if not archivos_copia_seguridad:
-                messagebox.showerror("Error", "No se encontraron copias de seguridad.")
+                messagebox.showerror("Error", "No se encontraron copias de seguridad.", parent=ventana_config)
                 return
 
             ventana_restaurar = tk.Toplevel(ventana_config)
             ventana_restaurar.title("Restaurar Copia de Seguridad")
+            ventana_restaurar.configure(bg="#A9A9A9")
 
-            tk.Label(ventana_restaurar, text="Seleccione la copia de seguridad a restaurar:").pack()
-            lista_copias_seguridad = tk.Listbox(ventana_restaurar)
+            label_seleccionar = ttk.Label(ventana_restaurar, text="Seleccione la copia de seguridad a restaurar:", style="CustomLabel.TLabel")
+            label_seleccionar.pack(pady=5, padx=10)
+
+            lista_copias_seguridad = tk.Listbox(ventana_restaurar, bg="#ffffff", fg="#000000")
             for archivo in archivos_copia_seguridad:
                 lista_copias_seguridad.insert(tk.END, archivo)
-            lista_copias_seguridad.pack()
+            lista_copias_seguridad.pack(padx=10, pady=5, fill="both", expand=True)
+
+            botones_restaurar_eliminar_frame = ttk.Frame(ventana_restaurar, style="TFrame")
+            botones_restaurar_eliminar_frame.pack(pady=5, padx=10)
+            botones_restaurar_eliminar_frame.columnconfigure(0, weight=1)
+            botones_restaurar_eliminar_frame.columnconfigure(1, weight=1)
 
             def restaurar_seleccionada():
                 seleccion = lista_copias_seguridad.curselection()
                 if seleccion:
                     archivo_seleccionado = lista_copias_seguridad.get(seleccion[0])
                     shutil.copy2(archivo_seleccionado, "inventario.json")
-                    messagebox.showinfo("Restaurar", f"Datos restaurados desde: {archivo_seleccionado}")
+                    messagebox.showinfo("Restaurar", f"Datos restaurados desde: {archivo_seleccionado}", parent=ventana_restaurar)
                     ventana_restaurar.destroy()
                 else:
-                    messagebox.showerror("Error", "Seleccione una copia de seguridad.")
+                    messagebox.showerror("Error", "Seleccione una copia de seguridad.", parent=ventana_restaurar)
+
+            btn_restaurar_seleccionada = ttk.Button(botones_restaurar_eliminar_frame, text="Restaurar", command=restaurar_seleccionada)
+            btn_restaurar_seleccionada.grid(row=0, column=0, padx=5, pady=5, sticky="ew")
 
             def eliminar_seleccionada():
                 seleccion = lista_copias_seguridad.curselection()
@@ -2051,53 +2273,69 @@ def configuracion():
                     archivo_seleccionado = lista_copias_seguridad.get(seleccion[0])
                     os.remove(archivo_seleccionado)
                     lista_copias_seguridad.delete(seleccion[0])
-                    messagebox.showinfo("Eliminar", f"Copia de seguridad '{archivo_seleccionado}' eliminada.")
+                    messagebox.showinfo("Eliminar", f"Copia de seguridad '{archivo_seleccionado}' eliminada.", parent=ventana_restaurar)
                 else:
-                    messagebox.showerror("Error", "Seleccione una copia de seguridad.")
+                    messagebox.showerror("Error", "Seleccione una copia de seguridad.", parent=ventana_restaurar)
 
-            tk.Button(ventana_restaurar, text="Restaurar", command=restaurar_seleccionada).pack()
-            tk.Button(ventana_restaurar, text="Eliminar", command=eliminar_seleccionada).pack()
+            btn_eliminar_seleccionada = ttk.Button(botones_restaurar_eliminar_frame, text="Eliminar", command=eliminar_seleccionada)
+            btn_eliminar_seleccionada.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error al restaurar la copia de seguridad: {e}")
+            messagebox.showerror("Error", f"Error al restaurar la copia de seguridad: {e}", parent=ventana_config)
 
-    tk.Button(ventana_config, text="Restaurar", command=restaurar_copia_seguridad).grid(row=4, column=0, columnspan=2, pady=10)
+    btn_restaurar = ttk.Button(backup_restore_frame, text="Restaurar", command=restaurar_copia_seguridad)
+    btn_restaurar.grid(row=0, column=1, pady=5, padx=5, sticky="ew")
 
     # Botón "Gestión de Usuarios"
     def gestionar_usuarios():
         ventana_usuarios = tk.Toplevel(ventana_config)
         ventana_usuarios.title("Gestión de Usuarios")
+        ventana_usuarios.configure(bg="#A9A9A9")
 
-        tk.Label(ventana_usuarios, text="Usuarios:").pack()
-        lista_usuarios = tk.Listbox(ventana_usuarios)
+        label_usuarios = ttk.Label(ventana_usuarios, text="Usuarios:", style="CustomLabel.TLabel")
+        label_usuarios.pack(pady=5, padx=10)
+
+        lista_usuarios = tk.Listbox(ventana_usuarios, bg="#ffffff", fg="#000000")
         for usuario in usuarios:
             lista_usuarios.insert(tk.END, usuario)
-        lista_usuarios.pack()
+        lista_usuarios.pack(padx=10, pady=5, fill="both", expand=True)
 
-        tk.Label(ventana_usuarios, text="Nombre:").pack()
-        entry_nombre = tk.Entry(ventana_usuarios)
-        entry_nombre.pack()
-        tk.Label(ventana_usuarios, text="Contraseña:").pack()
-        entry_contrasena = tk.Entry(ventana_usuarios, show="*")
-        entry_contrasena.pack()
+        frame_crear_usuario = ttk.Frame(ventana_usuarios, style="TFrame")
+        frame_crear_usuario.pack(pady=5, padx=10, fill="x")
+        frame_crear_usuario.columnconfigure(1, weight=1)
+
+        label_nombre = ttk.Label(frame_crear_usuario, text="Nombre:", style="CustomLabel.TLabel")
+        label_nombre.grid(row=0, column=0, sticky="w", padx=5, pady=5)
+        entry_nombre = ttk.Entry(frame_crear_usuario, style="CustomEntry.TEntry")
+        entry_nombre.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
+
+        label_contrasena = ttk.Label(frame_crear_usuario, text="Contraseña:", style="CustomLabel.TLabel")
+        label_contrasena.grid(row=1, column=0, sticky="w", padx=5, pady=5)
+        entry_contrasena = ttk.Entry(frame_crear_usuario, show="*", style="CustomEntry.TEntry")
+        entry_contrasena.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
 
         def verificar_codigo_administrador(codigo):
             """Verifica si el código de administrador es correcto."""
-            return hashlib.sha256(codigo.encode()).hexdigest() == clave_admin  # Usar clave_admin
+            return hashlib.sha256(codigo.encode()).hexdigest() == clave_admin
 
         def crear_usuario():
             nombre = entry_nombre.get()
             contrasena = entry_contrasena.get()
-            codigo_admin = simpledialog.askstring("Código de Administrador", "Ingrese el código de administrador:")
+            codigo_admin = simpledialog.askstring("Código de Administrador", "Ingrese el código de administrador:", parent=ventana_usuarios)
             if codigo_admin and verificar_codigo_administrador(codigo_admin):
                 if nombre and contrasena:
                     usuarios[nombre] = hashlib.sha256(contrasena.encode()).hexdigest()
                     lista_usuarios.insert(tk.END, nombre)
-                    messagebox.showinfo("Usuario Creado", f"Usuario '{nombre}' creado.")
+                    messagebox.showinfo("Usuario Creado", f"Usuario '{nombre}' creado.", parent=ventana_usuarios)
+                    entry_nombre.delete(0, tk.END)
+                    entry_contrasena.delete(0, tk.END)
                 else:
-                    messagebox.showerror("Error", "Ingrese nombre y contraseña.")
+                    messagebox.showerror("Error", "Ingrese nombre y contraseña.", parent=ventana_usuarios)
             else:
-                messagebox.showerror("Error", "Código de administrador incorrecto.")
+                messagebox.showerror("Error", "Código de administrador incorrecto.", parent=ventana_usuarios)
+
+        btn_crear_usuario = ttk.Button(ventana_usuarios, text="Crear Usuario", command=crear_usuario)
+        btn_crear_usuario.pack(pady=5, padx=10, fill="x")
 
         def eliminar_usuario():
             seleccion = lista_usuarios.curselection()
@@ -2105,14 +2343,15 @@ def configuracion():
                 usuario_seleccionado = lista_usuarios.get(seleccion[0])
                 del usuarios[usuario_seleccionado]
                 lista_usuarios.delete(seleccion[0])
-                messagebox.showinfo("Usuario Eliminado", f"Usuario '{usuario_seleccionado}' eliminado.")
+                messagebox.showinfo("Usuario Eliminado", f"Usuario '{usuario_seleccionado}' eliminado.", parent=ventana_usuarios)
             else:
-                messagebox.showerror("Error", "Seleccione un usuario.")
+                messagebox.showerror("Error", "Seleccione un usuario.", parent=ventana_usuarios)
 
-        tk.Button(ventana_usuarios, text="Crear Usuario", command=crear_usuario).pack()
-        tk.Button(ventana_usuarios, text="Eliminar Usuario", command=eliminar_usuario).pack()
+        btn_eliminar_usuario = ttk.Button(ventana_usuarios, text="Eliminar Usuario", command=eliminar_usuario)
+        btn_eliminar_usuario.pack(pady=5, padx=10, fill="x")
 
-    tk.Button(ventana_config, text="Gestión de Usuarios", command=gestionar_usuarios).grid(row=5, column=0, columnspan=2, pady=10)
+    btn_gestion_usuarios = ttk.Button(main_frame, text="Gestión de Usuarios", command=gestionar_usuarios)
+    btn_gestion_usuarios.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
 
     # Botón "Aceptar" al final y separado
     def guardar_configuracion():
@@ -2123,13 +2362,14 @@ def configuracion():
         }
         with open("configuracion.json", "w") as archivo_config:
             json.dump(configuracion, archivo_config)
-        messagebox.showinfo("Configuración Guardada", "La configuración se ha guardado correctamente.")
+        messagebox.showinfo("Configuración Guardada", "La configuración se ha guardado correctamente.", parent=ventana_config)
         ventana_config.destroy()
         aplicar_tema_color(tema_color_var.get())  # Aplicar el tema de color seleccionado
         if notificaciones_var.get():
             mostrar_notificacion_bajo_stock()  # Mostrar notificación si las notificaciones están activadas
 
-    tk.Button(ventana_config, text="Aceptar", command=guardar_configuracion).grid(row=7, column=0, columnspan=2, pady=10)
+    btn_aceptar = ttk.Button(main_frame, text="Aceptar", command=guardar_configuracion)
+    btn_aceptar.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
 
 # Función para aplicar el tema de color
 def aplicar_tema_color(tema):
@@ -2166,12 +2406,18 @@ def mostrar_notificacion_bajo_stock():
         ventana_notificacion.title("Advertencia: Bajo Stock")
         ventana_notificacion.geometry("+{}+0".format(ventana.winfo_screenwidth() - 300))  # Posición superior derecha
         ventana_notificacion.overrideredirect(True)  # Eliminar bordes y barra de título
+        ventana_notificacion.configure(bg="yellow")
 
         # Etiqueta con el mensaje
-        tk.Label(ventana_notificacion, text=mensaje, bg="yellow", padx=10, pady=10).pack()
+        label_mensaje = ttk.Label(ventana_notificacion, text=mensaje, background="yellow", foreground="black", padding=10, font=("Segoe UI", 10, "bold"))
+        label_mensaje.pack()
 
         # Botón para cerrar la notificación
-        tk.Button(ventana_notificacion, text="Cerrar", command=ventana_notificacion.destroy).pack()
+        boton_cerrar = ttk.Button(ventana_notificacion, text="Cerrar", command=ventana_notificacion.destroy)
+        boton_cerrar.pack(pady=5)
+
+        # Destruir la notificación después de un tiempo (opcional)
+        ventana_notificacion.after(5000, ventana_notificacion.destroy)
 
 def importar_datos():
     """Importa datos desde el archivo JSON y actualiza el inventario."""
@@ -2194,7 +2440,7 @@ def importar_datos():
                 "fecha_salida": fecha_salida
             }
         # Asegurarse de que entradas_departamentos sea una lista
-        entradas_departamentos = datos.get("entradas_departamentos", []) 
+        entradas_departamentos = datos.get("entradas_departamentos", [])
         if not isinstance(entradas_departamentos, list): #Verificamos si es lista, sino se asigna una lista vacía.
             entradas_departamentos = []
 
@@ -2225,12 +2471,12 @@ def exportar_datos():
                     fecha_entrada = datos["fecha_entrada"]
                     fecha_salida = datos["fecha_salida"]
 
-                    if isinstance(fecha_entrada, datetime.datetime):
+                    if isinstance(fecha_entrada, datetime.date):
                         fecha_entrada_str = fecha_entrada.strftime("%Y-%m-%d")
                     else:
                         fecha_entrada_str = "Fecha no disponible"  # O algún otro valor predeterminado
 
-                    if isinstance(fecha_salida, datetime.datetime):
+                    if isinstance(fecha_salida, datetime.date):
                         fecha_salida_str = fecha_salida.strftime("%Y-%m-%d")
                     else:
                         fecha_salida_str = "Fecha no disponible"  # O algún otro valor predeterminado
@@ -2259,7 +2505,7 @@ def guardar_como():
     archivo = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("Archivos JSON", "*.json")])
     if archivo:
         guardar_datos(archivo)
-                              #Hasta aqui Funcion de configuracion
+            
 
 
 
