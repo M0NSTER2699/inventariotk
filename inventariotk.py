@@ -17,7 +17,7 @@ from tkcalendar import Calendar
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors
+from reportlab.lib import colors,units
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 from PIL import Image  
@@ -274,7 +274,7 @@ def agregar_producto():
 
     ventana_agregar = tk.Toplevel(ventana)
     ventana_agregar.title("Agregar Producto")
-    ventana_agregar.configure(bg="#E0F7FA")
+    ventana_agregar.configure(bg="#000080")
 
     # Obtener las categorías existentes del inventario
     categorias = list(set(producto["categoria"] for producto in inventario.values()))
@@ -283,31 +283,6 @@ def agregar_producto():
     #Obtener Unidades de medida existentes
     unidades_medida = list(set(producto["unidad_medida"] for producto in inventario.values()))
     unidades_medida.append("Añadir nueva")
-
-    tk.Label(ventana_agregar, text="Nombre del producto:", bg="#E0F7FA").grid(row=0, column=0, sticky="w", padx=5, pady=5)
-    entry_producto = tk.Entry(ventana_agregar)
-    entry_producto.grid(row=0, column=1, padx=5, pady=5)
-
-    tk.Label(ventana_agregar, text="Categoría del producto:", bg="#E0F7FA").grid(row=1, column=0, sticky="w", padx=5, pady=5)
-    combo_categoria = ttk.Combobox(ventana_agregar, values=categorias)  # Usar Combobox para las categorías
-    combo_categoria.grid(row=1, column=1, padx=5, pady=5)
-
-    tk.Label(ventana_agregar, text="Destino de entrada:", bg="#E0F7FA").grid(row=2, column=0, sticky="w", padx=5, pady=5)
-    entry_destino_entrada = tk.Entry(ventana_agregar)
-    entry_destino_entrada.insert(0, "Almacén principal")  # Predeterminar "Almacén principal"
-    entry_destino_entrada.grid(row=2, column=1, padx=5, pady=5)
-
-    tk.Label(ventana_agregar, text="Cantidad de entrada:", bg="#E0F7FA").grid(row=3, column=0, sticky="w", padx=5, pady=5)
-    entry_entrada = tk.Entry(ventana_agregar)
-    entry_entrada.grid(row=3, column=1, padx=5, pady=5)
-
-    tk.Label(ventana_agregar, text="Unidad de medida:", bg="#E0F7FA").grid(row=4, column=0, sticky="w", padx=5, pady=5)
-    combo_unidad_medida = ttk.Combobox(ventana_agregar, values=unidades_medida) #Combobox para unidad de medida
-    combo_unidad_medida.grid(row=4, column=1, padx=5, pady=5)
-
-    tk.Label(ventana_agregar, text="Fecha de entrada (YYYY-MM-DD):", bg="#E0F7FA").grid(row=5, column=0, sticky="w", padx=5, pady=5)
-    entry_fecha_entrada = tk.Entry(ventana_agregar)
-    entry_fecha_entrada.grid(row=5, column=1, padx=5, pady=5)
 
 
     def abrir_calendario():
@@ -324,10 +299,72 @@ def agregar_producto():
         cal.pack(padx=10, pady=10)
         tk.Button(ventana_calendario, text="Seleccionar", command=seleccionar_fecha).pack(pady=5)
 
-    tk.Button(ventana_agregar, text="Calendario", command=abrir_calendario).grid(row=5, column=2, padx=5, pady=5)
-    tk.Button(ventana_agregar, text="Agregar", command=agregar, bg="#A5D6A7").grid(row=6, column=0, columnspan=3, pady=10)
+    
 
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_agregar)
+    style.theme_use('clam')
 
+    style.configure("CustomLabel.TLabel",  # Etiquetas blancas y gruesas con fondo azul
+                    foreground="#ffffff",
+                    background="#000080",
+                    font=("Segoe UI", 10, "bold"))
+
+    style.configure("CustomEntry.TEntry",  # Campos de entrada blancos con texto negro grueso
+                    foreground="#000000",
+                    background="#ffffff",
+                    insertcolor="#000000",
+                    font=("Segoe UI", 10, "bold"))
+
+    style.configure("TCombobox",  # Combobox blanco con texto negro grueso
+                    foreground="#000000",
+                    background="#ffffff",
+                    fieldbackground="#ffffff",
+                    insertcolor="#000000",
+                    font=("Segoe UI", 10, "bold"))
+
+    style.configure("CustomButton.TButton",  # Estilo para los botones (manteniendo el color)
+                    foreground="#000000",
+                    background="#d9d9d9",
+                    font=("Segoe UI", 10, "bold"),
+                    padding=8,
+                    relief="raised",
+                    anchor="center")
+    style.map("CustomButton.TButton",
+              background=[('active', '#c1c1c1')],
+              foreground=[('active', '#000000')])
+
+    # --- Etiquetas y Campos de Entrada ---
+    ttk.Label(ventana_agregar, text="Nombre del producto:", style="CustomLabel.TLabel").grid(row=0, column=0, sticky="w", padx=10, pady=10)
+    entry_producto = ttk.Entry(ventana_agregar, style="CustomEntry.TEntry")
+    entry_producto.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
+
+    ttk.Label(ventana_agregar, text="Categoría del producto:", style="CustomLabel.TLabel").grid(row=1, column=0, sticky="w", padx=10, pady=10)
+    combo_categoria = ttk.Combobox(ventana_agregar, values=list(set(producto["categoria"] for producto in inventario.values())) + ["Añadir nueva"], style="TCombobox")
+    combo_categoria.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
+
+    ttk.Label(ventana_agregar, text="Destino de entrada:", style="CustomLabel.TLabel").grid(row=2, column=0, sticky="w", padx=10, pady=10)
+    entry_destino_entrada = ttk.Entry(ventana_agregar, style="CustomEntry.TEntry")
+    entry_destino_entrada.insert(0, "Almacén principal")
+    entry_destino_entrada.grid(row=2, column=1, padx=10, pady=10, sticky="ew")
+
+    ttk.Label(ventana_agregar, text="Cantidad de entrada:", style="CustomLabel.TLabel").grid(row=3, column=0, sticky="w", padx=10, pady=10)
+    entry_entrada = ttk.Entry(ventana_agregar, style="CustomEntry.TEntry")
+    entry_entrada.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
+
+    ttk.Label(ventana_agregar, text="Unidad de medida:", style="CustomLabel.TLabel").grid(row=4, column=0, sticky="w", padx=10, pady=10)
+    combo_unidad_medida = ttk.Combobox(ventana_agregar, values=list(set(producto["unidad_medida"] for producto in inventario.values())) + ["Añadir nueva"], style="TCombobox")
+    combo_unidad_medida.grid(row=4, column=1, padx=10, pady=10, sticky="ew")
+
+    ttk.Label(ventana_agregar, text="Fecha de entrada (YYYY-MM-DD):", style="CustomLabel.TLabel").grid(row=5, column=0, sticky="w", padx=10, pady=10)
+    entry_fecha_entrada = ttk.Entry(ventana_agregar, style="CustomEntry.TEntry")
+    entry_fecha_entrada.grid(row=5, column=1, padx=10, pady=10, sticky="ew")
+
+    ttk.Button(ventana_agregar, text="Calendario", command=abrir_calendario, style="CustomButton.TButton").grid(row=5, column=2, padx=10, pady=10)
+    ttk.Button(ventana_agregar, text="Agregar", command=agregar, style="CustomButton.TButton").grid(row=6, column=0, columnspan=3, pady=15, padx=10, sticky="ew")
+
+    # --- Configurar la expansión de la columna ---
+    ventana_agregar.grid_columnconfigure(1, weight=1)
 
 def realizar_salida():
     """Realiza una salida en espera de productos del inventario."""
@@ -345,19 +382,51 @@ def realizar_salida():
         })
 
         messagebox.showinfo("Salida en Espera", f"{cantidad} unidades de '{producto}' solicitadas para {departamento}. Agregado a la lista de espera.")
-        ventana_salida.destroy()
+        ventana_salida_espera.destroy()
 
-    ventana_salida = tk.Toplevel(ventana)
-    ventana_salida.title("Salida en Espera")
-    ventana_salida.configure(bg="#E0F7FA")
+    ventana_salida_espera = tk.Toplevel(ventana)
+    ventana_salida_espera.title("Salida en Espera")
+    ventana_salida_espera.configure(bg="#000080")
+
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_salida_espera)
+    style.theme_use('clam')
+
+    style.configure("CustomLabel.TLabel",
+                    foreground="#ffffff",
+                    background="#000080",
+                    font=("Segoe UI", 10, "bold"))
+
+    style.configure("TCombobox",
+                    foreground="#000000",
+                    background="#ffffff",
+                    fieldbackground="#ffffff",
+                    insertcolor="#000000",
+                    font=("Segoe UI", 10))
+
+    style.configure("CustomEntry.TEntry",
+                    foreground="#000000",
+                    background="#ffffff",
+                    insertcolor="#000000",
+                    font=("Segoe UI", 10))
+
+    style.configure("CustomButton.TButton",
+                    foreground="#000000",
+                    background="#d9d9d9",
+                    font=("Segoe UI", 10, "bold"),
+                    padding=8,
+                    relief="raised",
+                    anchor="center")
+    style.map("CustomButton.TButton",
+              background=[('active', '#c1c1c1')],
+              foreground=[('active', '#000000')])
 
     # Obtener la lista de productos del inventario
-    productos = list(inventario.keys())
-   
+    productos = sorted(list(inventario.keys()))
 
-    tk.Label(ventana_salida, text="Nombre del producto:", bg="#E0F7FA").grid(row=0, column=0, sticky="w", padx=5, pady=5)
-    combo_producto = ttk.Combobox(ventana_salida, values=productos)  # Usar Combobox en lugar de Entry
-    combo_producto.grid(row=0, column=1, padx=5, pady=5)
+    ttk.Label(ventana_salida_espera, text="Nombre del producto:", style="CustomLabel.TLabel").grid(row=0, column=0, sticky="w", padx=10, pady=10)
+    combo_producto = ttk.Combobox(ventana_salida_espera, values=productos, style="TCombobox")
+    combo_producto.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
     # Función para filtrar la lista de productos a medida que el usuario escribe
     def filtrar_productos(event):
@@ -372,24 +441,21 @@ def realizar_salida():
     # Enlazar el evento de escritura al Combobox
     combo_producto.bind("<KeyRelease>", filtrar_productos)
 
-    tk.Label(ventana_salida, text="Cantidad de salida:", bg="#E0F7FA").grid(row=1, column=0, sticky="w", padx=5, pady=5)
-    entry_cantidad = tk.Entry(ventana_salida)
-    entry_cantidad.grid(row=1, column=1, padx=5, pady=5)
+    ttk.Label(ventana_salida_espera, text="Cantidad de salida:", style="CustomLabel.TLabel").grid(row=1, column=0, sticky="w", padx=10, pady=10)
+    entry_cantidad = ttk.Entry(ventana_salida_espera, style="CustomEntry.TEntry")
+    entry_cantidad.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
-    tk.Label(ventana_salida, text="Departamento:", bg="#E0F7FA").grid(row=2, column=0, sticky="w", padx=5, pady=5)
-    entry_departamento = tk.Entry(ventana_salida)
-    entry_departamento.grid(row=2, column=1, padx=5, pady=5)
-
-     # Menú desplegable para seleccionar el departamento
-    tk.Label(ventana_salida, text="Departamento:", bg="#E0F7FA").grid(row=2, column=0, sticky="w", padx=5, pady=5)
+    # Menú desplegable para seleccionar el departamento
+    ttk.Label(ventana_salida_espera, text="Departamento:", style="CustomLabel.TLabel").grid(row=2, column=0, sticky="w", padx=10, pady=10)
     departamentos = ["OTIC", "Oficina de Gestion Administrativa", "Oficina Contabilidad","Oficina Compras","Oficina de Bienes","Direccion de Servicios Generales y Transporte","Oficina de Seguimiento y Proyectos Estructurales","Direccion General de Planificacion Estrategica","Planoteca","Biblioteca","Direccion General de Seguimiento de Proyectos","Gestion Participativa Parque la isla","Oficina de Atencion ciudadana","Oficina de gestion Humana","Presidencia","Secretaria General","Consultoria Juridica","Oficina de Planificacion y Presupuesto","Auditoria","Direccion de informacion y Comunicacion","Direccion General de Formacion"]  # Reemplaza con tus departamentos
     departamentos.sort()
-    departamento_var = tk.StringVar(ventana_salida)
+    departamento_var = tk.StringVar(ventana_salida_espera)
     departamento_var.set(departamentos[0])  # Valor predeterminado
-    ttk.Combobox(ventana_salida, textvariable=departamento_var, values=departamentos).grid(row=2, column=1, padx=5, pady=5)
+    ttk.Combobox(ventana_salida_espera, textvariable=departamento_var, values=departamentos, style="TCombobox").grid(row=2, column=1, padx=10, pady=10, sticky="ew")
 
-    tk.Button(ventana_salida, text="Agregar a Salida en Espera", command=salida_espera, bg="#A5D6A7").grid(row=3, column=0, columnspan=2, pady=10)
+    ttk.Button(ventana_salida_espera, text="Agregar a Salida en Espera", command=salida_espera, style="CustomButton.TButton").grid(row=3, column=0, columnspan=2, pady=15, padx=10, sticky="ew")
 
+    ventana_salida_espera.grid_columnconfigure(1, weight=1)
 
 
    
@@ -562,14 +628,7 @@ def mostrar_inventario():
     # Enlazar el evento de clic derecho al Treeview
     tabla_productos.bind("<Button-3>", menu_contextual)
 
-    # Crear botón Imprimir
-    def imprimir_inventario():
-        """Imprime el inventario."""
-        contenido = obtener_contenido_inventario()
-        imprimir_contenido(contenido)
-        messagebox.showinfo("Impresión", "Inventario enviado a la impresora.")
-
-    tk.Button(ventana_inventario, text="Imprimir", command=imprimir_inventario).pack()
+    
 
     ventana_inventario.mainloop()
 def abrir_calendario(entry_fecha):
@@ -764,13 +823,7 @@ def mostrar_consumo_periodos(consumo_diario, consumo_semanal, consumo_mensual):
 
             tabla_consumo.insert("", tk.END, values=(departamento, producto, diario, semanal, mensual, unidad_medida, f"{porcentaje:.2f}%"))
 
-    def imprimir_consumo():
-        """Imprime el consumo por departamento."""
-        contenido = obtener_contenido_consumo()
-        imprimir_contenido(contenido)
-        messagebox.showinfo("Impresión", "Consumo por departamento enviado a la impresora.")
-
-    tk.Button(ventana_consumo, text="Imprimir", command=imprimir_consumo).pack()
+    
 
 def calcular_consumo_periodo(periodo):
     """Calcula el consumo para un período específico."""
@@ -847,21 +900,9 @@ def mostrar_consumo_periodo(periodo_nombre, consumo_periodo):
             porcentaje = (cantidad / total_consumo) * 100 if total_consumo > 0 else 0
             tabla_consumo.insert("", tk.END, values=(departamento, producto, cantidad, unidad_medida, f"{porcentaje:.2f}%"))
 
-    def imprimir_consumo():
-        """Imprime el consumo por departamento."""
-        contenido = obtener_contenido_consumo()
-        imprimir_contenido(contenido)
-        messagebox.showinfo("Impresión", "Consumo por departamento enviado a la impresora.")
+    
 
-    tk.Button(ventana_consumo, text="Imprimir", command=imprimir_consumo).pack()
-
-    def imprimir_consumo():
-        """Imprime el consumo por departamento."""
-        contenido = obtener_contenido_consumo()
-        imprimir_contenido(contenido)
-        messagebox.showinfo("Impresión", "Consumo por departamento enviado a la impresora.")
-
-    tk.Button(ventana_consumo, text="Imprimir", command=imprimir_consumo).pack()
+    
 
 def eliminar_producto():
     """Elimina un producto del inventario."""
@@ -1455,19 +1496,6 @@ def obtener_contenido_tabla(tabla):
         contenido += "\t".join(str(valor) for valor in valores) + "\n"
     return contenido
 
-def imprimir_contenido(contenido):
-    """Imprime el contenido proporcionado."""
-    try:
-        impresora = win32print.GetDefaultPrinter()
-        hPrinter = win32print.OpenPrinter(impresora)
-        job = win32print.StartDocPrinter(hPrinter, 1, ("Reporte", None, "RAW"))
-        win32print.StartPagePrinter(hPrinter)
-        win32print.WritePrinter(hPrinter, contenido.encode("utf-8"))
-        win32print.EndPagePrinter(hPrinter)
-        win32print.EndDocPrinter(hPrinter)
-        win32print.ClosePrinter(hPrinter)
-    except Exception as e:
-        messagebox.showerror("Error de Impresión", f"No se pudo imprimir el reporte: {e}")
 
 
 def ventana_reportes():
@@ -1850,9 +1878,8 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
                 tabla.insert("", tk.END, values=(departamento_filtro, producto, datos_consumo["categoria"], datos_consumo["cantidad"], datos_consumo["stock"]))
 
 
-
 def exportar_tabla_pdf(tabla_treeview):
-    """Exporta los datos del Treeview a un PDF con membrete y diseño personalizado."""
+    """Exporta los datos del Treeview a un PDF con membrete en cada página."""
     filename = filedialog.asksaveasfilename(
         defaultextension=".pdf",
         filetypes=[("Archivos PDF", "*.pdf")],
@@ -1868,28 +1895,11 @@ def exportar_tabla_pdf(tabla_treeview):
         item_values = [tabla_treeview.item(child)['values'][i] for i in range(len(columns))]
         data.append(item_values)
 
-    doc = SimpleDocTemplate(filename, pagesize=letter)
     styles = getSampleStyleSheet()
     style_normal = styles['Normal']
     style_heading = styles['Heading1']
 
     story = []
-
-    # --- Membrete ---
-    try:
-        img = Image.open("tu_membrete.png")  # Reemplaza "tu_membrete.png" con la ruta de tu imagen
-        img_width, img_height = img.size
-        aspect = img_height / float(img_width)
-        desired_width = 2 * inch
-        desired_height = desired_width * aspect
-        img_io = io.BytesIO()
-        img.save(img_io, format='PNG')
-        from reportlab.platypus import Image as ReportLabImage
-        img_reportlab = ReportLabImage(img_io, width=desired_width, height=desired_height)
-        story.append(img_reportlab)
-        story.append(Paragraph(" ", style_normal)) # Espacio después del membrete
-    except FileNotFoundError:
-        print("Error: No se encontró la imagen del membrete.")
 
     # --- Título del Reporte ---
     title = Paragraph("Reporte", style_heading)
@@ -1910,7 +1920,35 @@ def exportar_tabla_pdf(tabla_treeview):
     ]))
     story.append(table)
 
-    doc.build(story)
+    def draw_membrete(canvas, doc):
+        """Dibuja el membrete en la parte superior de la página y lo centra."""
+        try:
+            img = Image.open("C:/Users/monster/Desktop/src/server/routes/imagenes/OFICIOS-CORPOANDES.PNG")
+            img_width, img_height = img.size
+            aspect = img_height / float(img_width)
+            desired_width = 8 * units.inch  # Cubre casi todo el ancho
+            desired_height = desired_width * aspect
+            canvas.drawImage("C:/Users/monster/Desktop/src/server/routes/imagenes/OFICIOS-CORPOANDES.PNG",
+                             (letter[0] / units.inch - desired_width / units.inch) / 2 * units.inch,
+                             doc.height - doc.topMargin, # Alineado con la parte superior del margen
+                             width=desired_width, height=desired_height)
+        except FileNotFoundError:
+            canvas.drawString(doc.leftMargin, doc.height - units.inch, "Error: Membrete no encontrado.")
+
+    try:
+        img = Image.open("C:/Users/monster/Desktop/src/server/routes/imagenes/OFICIOS-CORPOANDES.PNG")
+        img_width, img_height = img.size
+        aspect = img_height / float(img_width)
+        desired_width = 8 * units.inch  # Cubre casi todo el ancho
+        desired_height_points = (8 * units.inch * aspect) # Altura del membrete en puntos
+        topMargin = desired_height_points + 0.5 * units.inch # Margen superior = altura del membrete + espacio
+    except FileNotFoundError:
+        topMargin = 2 * units.inch # Valor por defecto si no se encuentra la imagen
+
+    doc = SimpleDocTemplate(filename, pagesize=letter,
+                            topMargin=topMargin) # Usamos el margen superior calculado
+    doc.build(story, onFirstPage=draw_membrete, onLaterPages=draw_membrete)
+
     messagebox.showinfo("Exportar a PDF", "Reporte exportado exitosamente a PDF.", parent=tabla_treeview)
 
 
@@ -2240,49 +2278,31 @@ def guardar_como():
 
 
 def mostrar_menu():
-    """Muestra el menú principal con las opciones organizadas en una cuadrícula."""
-    global ventana  # Hacer la variable 'ventana' global
+    """Muestra el menú principal con la estructura original y colores oscuros."""
+    global ventana
 
-    ventana = tk.Tk()  # Crear la ventana principal aquí
+    ventana = tk.Tk()
     ventana.title("Menú Principal")
-    ventana.configure(bg="#E0F7FA")
+    ventana.configure(bg="#263238")
 
-    # Crear el menú principal
-    menu_principal = tk.Menu(ventana)
-    ventana.config(menu=menu_principal)  # Conectar el menú a la ventana principal
-
-    # Crear el menú "Archivo"
-    menu_archivo = tk.Menu(menu_principal, tearoff=0)
-    menu_principal.add_cascade(label="Archivo", menu=menu_archivo)
-    menu_archivo.add_command(label="Guardar", command=guardar_datos)
-    menu_archivo.add_command(label="Guardar como...", command=guardar_como)  # Agregar la opción aquí
-    menu_archivo.add_command(label="Importar", command=importar_datos)
-    menu_archivo.add_command(label="Exportar", command=exportar_datos)
-    menu_archivo.add_separator()  # Separador visual
-    menu_archivo.add_command(label="Eliminar producto", command=eliminar_producto)  # Mover la función aquí
-    menu_archivo.add_command(label="Salir", command=ventana.destroy)  # Mover la función aquí
-
-    # Crear el menú "Reportes"
-    menu_reportes = tk.Menu(menu_principal, tearoff=0)
-    menu_principal.add_cascade(label="Reportes", menu=menu_reportes)
-    menu_reportes.add_command(label="Productos con bajo stock", command=generar_reporte_bajo_stock)
-    menu_reportes.add_command(label="Historial de entradas", command=generar_reporte_entradas)
-    menu_reportes.add_command(label="Historial de salidas", command=generar_reporte_salidas)
-    menu_reportes.add_command(label="Historial de salidas en espera",command=generar_reporte_salidas_espera)
-    menu_reportes.add_command(label="Reporte completo",command=ventana_reportes)
-    # Crear el menú "Configuración"
-    menu_configuracion = tk.Menu(menu_principal, tearoff=0)
-    menu_principal.add_cascade(label="Configuración", menu=menu_configuracion)
-    menu_configuracion.add_command(label="Ajustes generales", command=configuracion)
-
-    # Estilos para los botones
+    # --- Estilos ttk Personalizados ---
     style = ttk.Style(ventana)
-    style.configure("TButton", foreground="black", background="#A5D6A7", font=("Arial", 12))
-    style.configure("Eliminar.TButton", foreground="black", background="#EF9A9A", font=("Arial", 12))
+    style.theme_use('clam')
 
-    # Cargar logos (reemplaza con tus archivos)
+    style.configure("MenuButtonDarkGrid.TButton",
+                    foreground="#eceff1",
+                    background="#37474F",
+                    font=("Segoe UI", 12, "bold"),
+                    padding=15,
+                    relief="raised",
+                    anchor="center")
+    style.map("MenuButtonDarkGrid.TButton",
+              background=[('active', '#455a64')],
+              foreground=[('active', '#fff')])
+
+    # --- Cargar Logos ---
     try:
-        logo_agregar = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/agregar-producto.png").subsample(3, 3)  # .subsample para reducir tamaño
+        logo_agregar = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/agregar-producto.png").subsample(3, 3)
         logo_salida = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/espera.png").subsample(3, 3)
         logo_mostrar = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/inventario.png").subsample(3, 3)
         logo_consumo = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/consumo.png").subsample(3, 3)
@@ -2293,25 +2313,49 @@ def mostrar_menu():
         logo_mostrar = None
         logo_consumo = None
 
-    # Crear botones para cada opción con logos encima
-    boton_agregar = ttk.Button(ventana, text="Agregar producto", image=logo_agregar, compound=tk.TOP, command=agregar_producto)
-    boton_salida = ttk.Button(ventana, text="Realizar salida en espera", image=logo_salida, compound=tk.TOP, command=realizar_salida)
-    boton_mostrar = ttk.Button(ventana, text="Mostrar inventario", image=logo_mostrar, compound=tk.TOP, command=mostrar_inventario)
-    boton_consumo = ttk.Button(ventana, text="Calcular consumo por departamento", image=logo_consumo, compound=tk.TOP, command=calcular_consumo_departamento)
+    # --- Barra de Menú Superior  ---
+    menu_principal = tk.Menu(ventana)
+    ventana.config(menu=menu_principal)
+    menu_archivo = tk.Menu(menu_principal, tearoff=0)
+    menu_principal.add_cascade(label="Archivo", menu=menu_archivo)
+    menu_archivo.add_command(label="Guardar", command=guardar_datos)
+    menu_archivo.add_command(label="Guardar como...", command=guardar_como)
+    menu_archivo.add_command(label="Importar", command=importar_datos)
+    menu_archivo.add_command(label="Exportar", command=exportar_datos)
+    menu_archivo.add_separator()
+    menu_archivo.add_command(label="Eliminar producto", command=eliminar_producto)
+    menu_archivo.add_command(label="Salir", command=ventana.destroy)
 
-    # Organizar los botones en una cuadrícula
+    menu_reportes = tk.Menu(menu_principal, tearoff=0)
+    menu_principal.add_cascade(label="Reportes", menu=menu_reportes)
+    menu_reportes.add_command(label="Productos con bajo stock", command=generar_reporte_bajo_stock)
+    menu_reportes.add_command(label="Historial de entradas", command=generar_reporte_entradas)
+    menu_reportes.add_command(label="Historial de salidas", command=generar_reporte_salidas)
+    menu_reportes.add_command(label="Historial de salidas en espera", command=generar_reporte_salidas_espera)
+    menu_reportes.add_command(label="Reporte completo", command=ventana_reportes)
+
+    menu_configuracion = tk.Menu(menu_principal, tearoff=0)
+    menu_principal.add_cascade(label="Configuración", menu=menu_configuracion)
+    menu_configuracion.add_command(label="Ajustes generales", command=configuracion)
+
+    # --- Crear botones para cada opción con logos encima ---
+    boton_agregar = ttk.Button(ventana, text="Agregar producto", image=logo_agregar, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=agregar_producto)
+    boton_salida = ttk.Button(ventana, text="Realizar salida en espera", image=logo_salida, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=realizar_salida)
+    boton_mostrar = ttk.Button(ventana, text="Mostrar inventario", image=logo_mostrar, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=mostrar_inventario)
+    boton_consumo = ttk.Button(ventana, text="Calcular consumo por departamento", image=logo_consumo, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=calcular_consumo_departamento)
+
+    # --- Organizar los botones en una cuadrícula ---
     boton_agregar.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
     boton_salida.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
     boton_mostrar.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
     boton_consumo.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
-    # Configurar la expansión de las columnas
+    # --- Configurar la expansión de las columnas ---
     ventana.grid_columnconfigure(0, weight=1)
     ventana.grid_columnconfigure(1, weight=1)
 
     # Cargar los datos y mostrar la notificación de bajo stock
     cargar_datos()
-
     mostrar_notificacion_bajo_stock()
 
     ventana.mainloop()
