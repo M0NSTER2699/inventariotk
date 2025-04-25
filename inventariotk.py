@@ -2607,4 +2607,4 @@ def mostrar_menu():
     ventana.mainloop()
 
 # --- Ejecución de la aplicación ---
-mostrar_menu()
+iniciar_sesion()
