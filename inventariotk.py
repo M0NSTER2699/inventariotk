@@ -22,6 +22,8 @@ from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 from PIL import Image as PImage  
 import io
+from fpdf import FPDF
+from reportlab.lib.colors import HexColor 
 
 
 
@@ -2050,85 +2052,130 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
             if stock_filtro_texto == "Todos" or (stock_filtro_condicion and stock_filtro_condicion(datos_consumo["stock"])):
                 tabla.insert("", tk.END, values=(departamento_filtro, producto, datos_consumo["categoria"], datos_consumo["cantidad"], datos_consumo["stock"]))
 
+class PDFConMembrete(FPDF):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.membrete_superior_altura = 20
+        self.membrete_inferior_altura = 15
+        self.margen_horizontal = 15
+        self.espacio_entre_tabla_y_membrete = 15  # Reducimos un poco el espacio
+        self.altura_encabezados = 10
+        self.altura_fila = 8
+        self.y_despues_membrete_superior = 5 + self.membrete_superior_altura + self.espacio_entre_tabla_y_membrete
+        self.filas_por_pagina = self.calcular_filas_por_pagina()
+
+    def calcular_filas_por_pagina(self):
+        """Calcula el número máximo de filas de datos que caben en una página."""
+        altura_disponible = self.h - self.t_margin - self.b_margin - self.membrete_inferior_altura - self.y_despues_membrete_superior - self.altura_encabezados - 5 # Un pequeño margen adicional
+        return int(altura_disponible / self.altura_fila)
+
+    def header(self):
+        """Dibuja el membrete superior en cada página."""
+        self.set_y(5)
+        ancho_disponible = self.w - (self.l_margin + self.r_margin)
+        try:
+            self.image(
+                "C:/Users/monster/Desktop/src/server/routes/imagenes/OFICIOS-CORPOANDES-1.png",
+                x=self.l_margin,
+                y=self.get_y(),
+                w=ancho_disponible,
+                h=self.membrete_superior_altura,
+            )
+        except FileNotFoundError:
+            self.set_font("Arial", 'B', 10)
+            self.cell(0, 10, "¡Error: Membrete superior no encontrado!", ln=1, align='C')
+
+    def footer(self):
+        """Dibuja el membrete inferior en cada página."""
+        self.set_y(-1 * (self.membrete_inferior_altura + 10))
+        self.set_x(self.margen_horizontal)
+        self.set_font("Arial", 'I', 8)
+        self.cell(
+            0,
+            5,
+            "Av. Los Próceres Entrada al Parque La Isla Edificio CORPOANDES Mérida.",
+            ln=1,
+            align="C",
+        )
+        self.cell(
+            0, 5, "Teléfonos: (0274) 2440511-2446293. Fax (0274) 2440451", ln=1, align="C"
+        )
+        self.cell(
+            0, 5, "Correo corpoandespresidencia@gmail.com", ln=1, align="C"
+        )
+
+    def print_titulo(self):
+        """Imprime el título 'Reporte'."""
+        self.set_font("Arial", 'B', 16)
+        self.cell(0, 10, "Reporte", ln=1, align='C')
+        self.set_font("Arial", size=10)
+
+    def print_encabezados_tabla(self, headers, col_widths, x_start):
+        """Imprime los encabezados de la tabla."""
+        self.set_x(x_start)
+        self.set_font("Arial", 'B', 10)
+        self.set_fill_color(200, 220, 255)
+        self.set_text_color(0, 0, 0)
+        for i, header in enumerate(headers):
+            self.cell(col_widths[i], 10, txt=header, border=1, align='C', fill=True)
+        self.ln()
+        # Ya no establecemos la posición Y aquí, lo haremos antes de imprimir el título en cada página
 
 def exportar_tabla_pdf(tabla_treeview):
-    """Exporta los datos del Treeview a un PDF con membrete en cada página."""
+    """Exporta los datos del Treeview a un PDF con membrete según el diseño."""
+
     filename = filedialog.asksaveasfilename(
         defaultextension=".pdf",
         filetypes=[("Archivos PDF", "*.pdf")],
-        title="Guardar reporte como PDF"
+        title="Guardar reporte como PDF",
     )
     if not filename:
         return
 
-    data = []
-    columns = [tabla_treeview.heading(col)['text'] for col in tabla_treeview['columns']]
-    data.append(columns)
-    for child in tabla_treeview.get_children():
-        item_values = [tabla_treeview.item(child)['values'][i] for i in range(len(columns))]
-        data.append(item_values)
+    pdf = PDFConMembrete(orientation="L", unit="mm", format="A4")
+    pdf.set_margins(left=15, top=20, right=15)
+    pdf.set_auto_page_break(auto=False, margin=0)  # Deshabilitar el salto de página automático de FPDF
+    pdf.set_font("Arial", size=10)
+    pdf.add_page()
 
-    styles = getSampleStyleSheet()
-    style_normal = styles['Normal']
-    style_heading = styles['Heading1']
+    # --- Configuración Inicial de la Tabla ---
+    cols = tabla_treeview["columns"]
+    headers = [tabla_treeview.heading(col)["text"] for col in cols]
+    col_widths = [35] * len(cols)
+    total_width = sum(col_widths)
+    x_start = (pdf.w - total_width) / 2
+    row_height = 8  # Altura de cada fila de datos
 
-    story = []
+    # --- Iterar sobre los Datos e Imprimir Filas por página ---
+    pdf.set_font("Arial", '', 9)
+    pdf.set_text_color(0, 0, 0)
+    items = tabla_treeview.get_children()
+    num_items = len(items)
+    filas_impresas = 0
 
-    # --- Título del Reporte ---
-    title = Paragraph("Reporte", style_heading)
-    title.style.alignment = 1  # Centrar el título
-    story.append(title)
-    story.append(Paragraph(" ", style_normal)) # Espacio después del título
+    while filas_impresas < num_items:
+        # Establecer la posición Y para el inicio del contenido de la página (después del membrete superior)
+        pdf.set_y(pdf.y_despues_membrete_superior)
+        pdf.print_titulo()
+        pdf.print_encabezados_tabla(headers, col_widths, x_start)
 
-    # --- Tabla de Datos ---
-    table = Table(data)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-    story.append(table)
+        for i in range(filas_impresas, min(filas_impresas + pdf.filas_por_pagina, num_items)):
+            child = items[i]
+            pdf.set_x(x_start)
+            if i % 2 == 0:
+                pdf.set_fill_color(240, 240, 240)
+            else:
+                pdf.set_fill_color(255, 255, 255)
+            for j, col in enumerate(cols):
+                value = tabla_treeview.set(child, col)
+                pdf.cell(col_widths[j], row_height, txt=str(value), border=1, align='L', fill=True)
+            pdf.ln()
+        filas_impresas += pdf.filas_por_pagina
+        if filas_impresas < num_items:
+            pdf.add_page()
 
-    def draw_membrete(canvas, doc):
-        """Dibuja el membrete en la parte superior de la página y lo centra."""
-        try:
-            img = PImage.open("C:/Users/monster/Desktop/src/server/routes/imagenes/OFICIOS-CORPOANDES.PNG")
-            img_width, img_height = img.size
-            aspect = img_height / float(img_width)
-            desired_width = 8 * units.inch  # Cubre casi todo el ancho
-            desired_height = desired_width * aspect
-            canvas.drawImage("C:/Users/monster/Desktop/src/server/routes/imagenes/OFICIOS-CORPOANDES.PNG",
-                             (letter[0] / units.inch - desired_width / units.inch) / 2 * units.inch,
-                             doc.height - doc.topMargin, # Alineado con la parte superior del margen
-                             width=desired_width, height=desired_height)
-        except FileNotFoundError:
-            canvas.drawString(doc.leftMargin, doc.height - units.inch, "Error: Membrete no encontrado.")
-
-    try:
-        img = PImage.open("C:/Users/monster/Desktop/src/server/routes/imagenes/OFICIOS-CORPOANDES.PNG")
-        img_width, img_height = img.size
-        aspect = img_height / float(img_width)
-        desired_width = 8 * units.inch  # Cubre casi todo el ancho
-        desired_height_points = (8 * units.inch * aspect) # Altura del membrete en puntos
-        topMargin = desired_height_points + 0.5 * units.inch # Margen superior = altura del membrete + espacio
-    except FileNotFoundError:
-        topMargin = 2 * units.inch # Valor por defecto si no se encuentra la imagen
-
-    doc = SimpleDocTemplate(filename, pagesize=letter,
-                            topMargin=topMargin) # Usamos el margen superior calculado
-    doc.build(story, onFirstPage=draw_membrete, onLaterPages=draw_membrete)
-
+    pdf.output(filename, "F")
     messagebox.showinfo("Exportar a PDF", "Reporte exportado exitosamente a PDF.", parent=tabla_treeview)
-
-
-
-
-
-
 
 
 
@@ -2607,4 +2654,4 @@ def mostrar_menu():
     ventana.mainloop()
 
 # --- Ejecución de la aplicación ---
-iniciar_sesion()
+mostrar_menu()
