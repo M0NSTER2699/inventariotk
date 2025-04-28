@@ -9,21 +9,16 @@ import shutil
 import os
 from PIL import Image, ImageTk
 import tkinter.simpledialog as simpledialog
-import win32print
-import win32ui
+
 import csv
 from tkinter import filedialog, messagebox
 from tkcalendar import Calendar
-from reportlab.lib.pagesizes import letter, landscape
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib import colors,units
-from reportlab.lib.units import inch
-from reportlab.pdfgen import canvas
-from PIL import Image as PImage  
-import io
+
+from PIL import Image as pilimage
+
+
 from fpdf import FPDF
-from reportlab.lib.colors import HexColor 
+
 
 
 
@@ -119,50 +114,19 @@ def cargar_datos():
 
 
 
+def verificar_clave(ventana_clave, entry_clave, ventana_login):
+    clave_ingresada = hashlib.sha256(entry_clave.get().encode()).hexdigest()
+    if clave_ingresada == clave_admin:
+        messagebox.showinfo("Acceso Permitido", "Acceso de administrador concedido.")
+        ventana_clave.destroy()
+        ventana_login.destroy()
+        mostrar_menu()
+    else:
+        messagebox.showerror("Acceso Denegado", "Clave incorrecta.")
+
 def iniciar_sesion():
     """Permite al usuario iniciar sesión."""
-    global ventana_login  # Declarar como global para poder cerrarla
-
-    def iniciar():
-        nombre_usuario = entry_nombre.get()
-        contrasena = entry_contrasena.get()
-        contrasena_hash = hashlib.sha256(contrasena.encode()).hexdigest()
-        es_admin = var_admin.get()  # Obtener el valor de la casilla de verificación
-
-        if nombre_usuario in usuarios and usuarios[nombre_usuario] == contrasena_hash:
-            if es_admin:
-                ventana_clave = tk.Toplevel(ventana_login)
-                ventana_clave.title("Clave de Administrador")
-                ventana_clave.configure(bg="#263238") # Fondo oscuro
-
-                # --- Estilos ttk Personalizados ---
-                style_clave = ttk.Style(ventana_clave)
-                style_clave.theme_use('clam')
-                style_clave.configure("TLabel", foreground="#eceff1", background="#263238", font=("Arial", 14))
-                style_clave.configure("TEntry", fieldbackground="#f0f0f0", foreground="black", font=("Arial", 14))
-                style_clave.configure("TButton", foreground="#eceff1", background="#37474F", font=("Arial", 14, "bold"))
-                style_clave.configure("TCheckbutton", foreground="#eceff1", background="#263238", font=("Arial", 14))
-
-                ttk.Label(ventana_clave, text="Clave:", background="#263238", foreground="#eceff1", font=("Arial", 14)).pack(pady=5)
-                entry_clave = ttk.Entry(ventana_clave, show="*", font=("Arial", 14), width=20)
-                entry_clave.pack(pady=5)
-
-                def verificar_clave():
-                    clave_ingresada = hashlib.sha256(entry_clave.get().encode()).hexdigest()
-                    if clave_ingresada == clave_admin:
-                        messagebox.showinfo("Acceso Permitido", "Acceso de administrador concedido.")
-                        mostrar_menu()
-                        ventana_clave.destroy()
-                        ventana_login.destroy()
-                    else:
-                        messagebox.showerror("Acceso Denegado", "Clave incorrecta.")
-
-                ttk.Button(ventana_clave, text="Verificar", command=verificar_clave, style="TButton").pack(pady=10)
-            else:
-                messagebox.showinfo("Acceso Denegado", "No tienes privilegios de administrador.")
-                ventana_login.destroy()
-        else:
-            messagebox.showerror("Error", "Nombre de usuario o contraseña incorrectos.")
+    global ventana_login
 
     ventana_login = tk.Tk()
     ventana_login.title("Login")
@@ -218,6 +182,37 @@ def iniciar_sesion():
     var_admin = tk.IntVar()  # Variable para la casilla de verificación
     check_admin = ttk.Checkbutton(frame_campos, text="Administrador", variable=var_admin)
     check_admin.grid(row=2, column=0, columnspan=2, pady=5, sticky="w") # sticky="w" para alinear a la izquierda
+
+    def iniciar():
+        nombre_usuario = entry_nombre.get()
+        contrasena = entry_contrasena.get()
+        contrasena_hash = hashlib.sha256(contrasena.encode()).hexdigest()
+        es_admin = var_admin.get()  # Obtener el valor de la casilla de verificación
+
+        if nombre_usuario in usuarios and usuarios[nombre_usuario] == contrasena_hash:
+            if es_admin:
+                ventana_clave = tk.Toplevel(ventana_login)
+                ventana_clave.title("Clave de Administrador")
+                ventana_clave.configure(bg="#263238") # Fondo oscuro
+
+                # --- Estilos ttk Personalizados ---
+                style_clave = ttk.Style(ventana_clave)
+                style_clave.theme_use('clam')
+                style_clave.configure("TLabel", foreground="#eceff1", background="#263238", font=("Arial", 14))
+                style_clave.configure("TEntry", fieldbackground="#f0f0f0", foreground="black", font=("Arial", 14))
+                style_clave.configure("TButton", foreground="#eceff1", background="#37474F", font=("Arial", 14, "bold"))
+                style_clave.configure("TCheckbutton", foreground="#eceff1", background="#263238", font=("Arial", 14))
+
+                ttk.Label(ventana_clave, text="Clave:", background="#263238", foreground="#eceff1", font=("Arial", 14)).pack(pady=5)
+                entry_clave_admin = ttk.Entry(ventana_clave, show="*", font=("Arial", 14), width=20)
+                entry_clave_admin.pack(pady=5)
+
+                ttk.Button(ventana_clave, text="Verificar", command=lambda: verificar_clave(ventana_clave, entry_clave_admin, ventana_login), style="TButton").pack(pady=10)
+            else:
+                ventana_login.destroy()
+                mostrar_menu()
+        else:
+            messagebox.showerror("Error", "Nombre de usuario o contraseña incorrectos.")
 
     ttk.Button(frame_campos, text="Iniciar Sesión", command=iniciar, style="TButton").grid(row=3, column=0, columnspan=2, pady=10, sticky="ew")  # sticky="ew" para expandir horizontalmente
 
@@ -2561,37 +2556,11 @@ def mostrar_menu():
     ventana.title("Menú Principal")
     ventana.configure(bg="#263238")
 
-    # --- Estilos ttk Personalizados ---
-    style = ttk.Style(ventana)
-    style.theme_use('clam')
-
-    style.configure("MenuButtonDarkGrid.TButton",
-                    foreground="#eceff1",
-                    background="#37474F",
-                    font=("Segoe UI", 12, "bold"),
-                    padding=15,
-                    relief="raised",
-                    anchor="center")
-    style.map("MenuButtonDarkGrid.TButton",
-              background=[('active', '#455a64')],
-              foreground=[('active', '#fff')])
-
-    # --- Cargar Logos ---
-    try:
-        logo_agregar = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/agregar-producto.png").subsample(3, 3)
-        logo_salida = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/espera.png").subsample(3, 3)
-        logo_mostrar = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/inventario.png").subsample(3, 3)
-        logo_consumo = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/consumo.png").subsample(3, 3)
-    except tk.TclError as e:
-        print(f"Error al cargar imágenes: {e}")
-        logo_agregar = None
-        logo_salida = None
-        logo_mostrar = None
-        logo_consumo = None
-
+    
     # --- Barra de Menú Superior  ---
     menu_principal = tk.Menu(ventana)
     ventana.config(menu=menu_principal)
+
     menu_archivo = tk.Menu(menu_principal, tearoff=0)
     menu_principal.add_cascade(label="Archivo", menu=menu_archivo)
     menu_archivo.add_command(label="Guardar", command=guardar_datos)
@@ -2613,11 +2582,60 @@ def mostrar_menu():
     menu_principal.add_cascade(label="Configuración", menu=menu_configuracion)
     menu_configuracion.add_command(label="Ajustes generales", command=configuracion)
 
+
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana)
+    style.theme_use('clam')
+
+    style.configure("MenuButtonDarkGrid.TButton",
+                    foreground="#eceff1",
+                    background="#37474F",
+                    font=("Segoe UI", 12, "bold"),
+                    padding=15,
+                    relief="raised",
+                    anchor="center")
+    style.map("MenuButtonDarkGrid.TButton",
+              background=[('active', '#455a64')],
+              foreground=[('active', '#fff')])
+
+    # --- Cargar Logos ---
+    try:
+        ventana.logo_agregar_img = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/agregar-producto.png").subsample(3, 3)
+        print(f"Cargado logo_agregar: {ventana.logo_agregar_img}") # Debugging
+        logo_agregar = ventana.logo_agregar_img
+
+        ventana.logo_salida_img = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/espera.png").subsample(3, 3)
+        print(f"Cargado logo_salida: {ventana.logo_salida_img}") # Debugging
+        logo_salida = ventana.logo_salida_img
+
+        ventana.logo_mostrar_img = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/inventario.png").subsample(3, 3)
+        print(f"Cargado logo_mostrar: {ventana.logo_mostrar_img}") # Debugging
+        logo_mostrar = ventana.logo_mostrar_img
+
+        ventana.logo_consumo_img = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/consumo.png").subsample(3, 3)
+        print(f"Cargado logo_consumo: {ventana.logo_consumo_img}") # Debugging
+        logo_consumo = ventana.logo_consumo_img
+
+    except tk.TclError as e:
+        print(f"Error AL CARGAR imágenes: {e}")
+        logo_agregar = None
+        logo_salida = None
+        logo_mostrar = None
+        logo_consumo = None
+
     # --- Crear botones para cada opción con logos encima ---
-    boton_agregar = ttk.Button(ventana, text="Agregar producto", image=logo_agregar, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=agregar_producto)
-    boton_salida = ttk.Button(ventana, text="Realizar salida en espera", image=logo_salida, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=realizar_salida)
-    boton_mostrar = ttk.Button(ventana, text="Mostrar inventario", image=logo_mostrar, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=mostrar_inventario)
-    boton_consumo = ttk.Button(ventana, text="Calcular consumo por departamento", image=logo_consumo, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=calcular_consumo_departamento)
+    print(f"Valor de logo_agregar ANTES del botón: {logo_agregar}") # Debugging
+    boton_agregar = ttk.Button(ventana, text="Agregar producto", image=ventana.logo_agregar_img, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=agregar_producto)
+    boton_agregar.image = ventana.logo_agregar_img  # Guardar referencia
+
+    boton_salida = ttk.Button(ventana, text="Realizar salida en espera", image=ventana.logo_salida_img, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=realizar_salida)
+    boton_salida.image = ventana.logo_salida_img  # Guardar referencia
+
+    boton_mostrar = ttk.Button(ventana, text="Mostrar inventario", image=ventana.logo_mostrar_img, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=mostrar_inventario)
+    boton_mostrar.image = ventana.logo_mostrar_img  # Guardar referencia
+
+    boton_consumo = ttk.Button(ventana, text="Calcular consumo por departamento", image=ventana.logo_consumo_img, compound=tk.TOP, style="MenuButtonDarkGrid.TButton", command=calcular_consumo_departamento)
+    boton_consumo.image = ventana.logo_consumo_img  # Guardar referencia
 
     # --- Organizar los botones en una cuadrícula ---
     boton_agregar.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
@@ -2625,12 +2643,14 @@ def mostrar_menu():
     boton_mostrar.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
     boton_consumo.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
+
+
     # --- Configurar la expansión de las columnas ---
     ventana.grid_columnconfigure(0, weight=1)
     ventana.grid_columnconfigure(1, weight=1)
 
-    # Cargar los datos y mostrar la notificación de bajo stock
-    cargar_datos()
+    
+    cargar_datos() 
     mostrar_notificacion_bajo_stock()
 
     ventana.mainloop()
