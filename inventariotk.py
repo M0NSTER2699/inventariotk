@@ -977,26 +977,7 @@ def mostrar_consumo_periodo(periodo_nombre, consumo_periodo):
 
     
 
-def eliminar_producto():
-    """Elimina un producto del inventario."""
-    def eliminar():
-        producto_a_eliminar = entry_producto.get()
-        if producto_a_eliminar in inventario:
-            del inventario[producto_a_eliminar]
-            messagebox.showinfo("Producto Eliminado", f"Producto '{producto_a_eliminar}' eliminado del inventario.")
-            ventana_eliminar.destroy()
-        else:
-            messagebox.showerror("Error", "El producto no existe en el inventario.")
 
-    ventana_eliminar = tk.Toplevel(ventana)  # Usar la variable global 'ventana'
-    ventana_eliminar.title("Eliminar Producto")
-    ventana_eliminar.configure(bg="#E0F7FA")
-
-    tk.Label(ventana_eliminar, text="Nombre del producto a eliminar:", bg="#E0F7FA").pack(pady=5)
-    entry_producto = tk.Entry(ventana_eliminar)
-    entry_producto.pack(pady=5)
-
-    tk.Button(ventana_eliminar, text="Eliminar", command=eliminar, bg="#EF9A9A").pack(pady=10)  # Botón rojo para eliminar
 
 
                             #Hasta aqui funciones principales.
@@ -1790,45 +1771,9 @@ def ventana_reportes():
     stock_seleccionado.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
     stock_seleccionado.set("Todos")
 
-    fecha_inicio_stock = tk.StringVar()
-    fecha_fin_stock = tk.StringVar()
-    fecha_inicio_stock.set("")
-    fecha_fin_stock.set("")
+   
 
-    def seleccionar_fecha_inicio_stock():
-        top = tk.Toplevel(ventana_reporte)
-        top.configure(bg="#A9A9A9")
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd', background="#ffffff", foreground="#000000", bordercolor="#d9d9d9", selectbackground="#bddfff", selectforeground="#000000")
-        cal.pack(padx=10, pady=10)
-        def grabar_fecha():
-            fecha_inicio_stock.set(cal.get_date())
-            label_fecha_inicio_seleccionada_stock.config(text="Inicio: " + fecha_inicio_stock.get())
-            top.destroy()
-        boton_seleccionar = ttk.Button(top, text="Seleccionar", command=grabar_fecha)
-        boton_seleccionar.pack(pady=5)
-
-    def seleccionar_fecha_fin_stock():
-        top = tk.Toplevel(ventana_reporte)
-        top.configure(bg="#A9A9A9")
-        cal = Calendar(top, selectmode='day', date_pattern='yyyy-mm-dd', background="#ffffff", foreground="#000000", bordercolor="#d9d9d9", selectbackground="#bddfff", selectforeground="#000000")
-        cal.pack(padx=10, pady=10)
-        def grabar_fecha():
-            fecha_fin_stock.set(cal.get_date())
-            label_fecha_fin_seleccionada_stock.config(text="Fin: " + fecha_fin_stock.get())
-            top.destroy()
-        boton_seleccionar = ttk.Button(top, text="Seleccionar", command=grabar_fecha)
-        boton_seleccionar.pack(pady=5)
-
-    boton_fecha_inicio_stock = ttk.Button(frame_filtros, text="Inicio", command=seleccionar_fecha_inicio_stock)
-    boton_fecha_inicio_stock.grid(row=2, column=2, padx=5, pady=5)
-    label_fecha_inicio_seleccionada_stock = ttk.Label(frame_filtros, text="Inicio: --", style="CustomLabel.TLabel")
-    label_fecha_inicio_seleccionada_stock.grid(row=2, column=3, padx=5, pady=5, sticky="w")
-
-    boton_fecha_fin_stock = ttk.Button(frame_filtros, text="Fin", command=seleccionar_fecha_fin_stock)
-    boton_fecha_fin_stock.grid(row=2, column=4, padx=5, pady=5)
-    label_fecha_fin_seleccionada_stock = ttk.Label(frame_filtros, text="Fin: --", style="CustomLabel.TLabel")
-    label_fecha_fin_seleccionada_stock.grid(row=2, column=5, padx=5, pady=5, sticky="w")
-
+    
     global tabla_reporte
     tabla_reporte = ttk.Treeview(frame_tabla, style="Grid.Treeview")
     tabla_reporte.pack(fill="both", expand=True)
@@ -1976,7 +1921,7 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
             lapso_texto = f"{fecha_inicio.strftime('%Y-%m-%d')} al {fecha_fin.strftime('%Y-%m-%d')}"
 
             # --- Reporte de Salidas por Departamento y Lapso (incluyendo Producto y filtro de stock) ---
-            tabla["columns"] = ("Departamento", "Producto", "Categoría", "Cantidad", "Fecha Salida", "Stock Actual")
+            tabla["columns"] = ("Departamento", "Producto", "Categoría", "Cantidad", "Lapso", "Stock Actual")
             tabla.heading("#1", text="Departamento")
             tabla.column("#1", minwidth=150, stretch=tk.YES)
             tabla.heading("#2", text="Producto")
@@ -1985,8 +1930,8 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
             tabla.column("#3", minwidth=100, stretch=tk.YES)
             tabla.heading("#4", text="Cantidad")
             tabla.column("#4", minwidth=100, stretch=tk.YES)
-            tabla.heading("#5", text="Fecha Salida")
-            tabla.column("#5", minwidth=100, stretch=tk.YES)
+            tabla.heading("#5", text="Lapso")  # Cambiamos "Fecha Salida" por "Lapso"
+            tabla.column("#5", minwidth=200, stretch=tk.YES)
             tabla.heading("#6", text="Stock Actual")
             tabla.column("#6", minwidth=100, stretch=tk.YES)
 
@@ -1997,7 +1942,6 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
                     cantidad_salida = salida["cantidad"]
                     categoria_producto = inventario.get(producto_salida, {}).get("categoria")
                     departamento_salida = salida.get("destino")
-                    fecha_salida_str = salida["fecha"]
                     stock_actual = inventario.get(producto_salida, {}).get("stock", 0)
 
                     if departamento_salida == departamento_filtro:
@@ -2007,7 +1951,7 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
                             if fecha_fin and fecha_salida_obj > fecha_fin:
                                 continue
                             if stock_filtro_texto == "Todos" or (stock_filtro_condicion and stock_filtro_condicion(stock_actual)):
-                                tabla.insert("", tk.END, values=(departamento_salida, producto_salida, categoria_producto, cantidad_salida, fecha_salida_str, stock_actual))
+                                tabla.insert("", tk.END, values=(departamento_salida, producto_salida, categoria_producto, cantidad_salida, lapso_texto, stock_actual)) # Usamos lapso_texto aquí
 
                 except ValueError:
                     print(f"Error al procesar fecha de salida: {salida.get('fecha')}")
@@ -2052,25 +1996,24 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
             if stock_filtro_texto == "Todos" or (stock_filtro_condicion and stock_filtro_condicion(datos_consumo["stock"])):
                 tabla.insert("", tk.END, values=(departamento_filtro, producto, datos_consumo["categoria"], datos_consumo["cantidad"], datos_consumo["stock"]))
 
+
 class PDFConMembrete(FPDF):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.membrete_superior_altura = 20
         self.membrete_inferior_altura = 15
-        self.margen_horizontal = 15
-        self.espacio_entre_tabla_y_membrete = 15  # Reducimos un poco el espacio
+        self.margen_horizontal = 5  # Reducimos aún más los márgenes horizontales
+        self.espacio_entre_tabla_y_membrete = 15
         self.altura_encabezados = 10
-        self.altura_fila = 8
+        self.altura_fila = 7  # Reducimos ligeramente la altura de la fila
         self.y_despues_membrete_superior = 5 + self.membrete_superior_altura + self.espacio_entre_tabla_y_membrete
         self.filas_por_pagina = self.calcular_filas_por_pagina()
 
     def calcular_filas_por_pagina(self):
-        """Calcula el número máximo de filas de datos que caben en una página."""
-        altura_disponible = self.h - self.t_margin - self.b_margin - self.membrete_inferior_altura - self.y_despues_membrete_superior - self.altura_encabezados - 5 # Un pequeño margen adicional
+        altura_disponible = self.h - self.t_margin - self.b_margin - self.membrete_inferior_altura - self.y_despues_membrete_superior - self.altura_encabezados - 5
         return int(altura_disponible / self.altura_fila)
 
     def header(self):
-        """Dibuja el membrete superior en cada página."""
         self.set_y(5)
         ancho_disponible = self.w - (self.l_margin + self.r_margin)
         try:
@@ -2086,7 +2029,6 @@ class PDFConMembrete(FPDF):
             self.cell(0, 10, "¡Error: Membrete superior no encontrado!", ln=1, align='C')
 
     def footer(self):
-        """Dibuja el membrete inferior en cada página."""
         self.set_y(-1 * (self.membrete_inferior_altura + 10))
         self.set_x(self.margen_horizontal)
         self.set_font("Arial", 'I', 8)
@@ -2105,21 +2047,19 @@ class PDFConMembrete(FPDF):
         )
 
     def print_titulo(self):
-        """Imprime el título 'Reporte'."""
         self.set_font("Arial", 'B', 16)
         self.cell(0, 10, "Reporte", ln=1, align='C')
         self.set_font("Arial", size=10)
 
     def print_encabezados_tabla(self, headers, col_widths, x_start):
-        """Imprime los encabezados de la tabla."""
         self.set_x(x_start)
-        self.set_font("Arial", 'B', 10)
+        self.set_font("Arial", 'B', 8)  # Reducimos también la fuente del encabezado
         self.set_fill_color(200, 220, 255)
         self.set_text_color(0, 0, 0)
         for i, header in enumerate(headers):
-            self.cell(col_widths[i], 10, txt=header, border=1, align='C', fill=True)
+            self.cell(col_widths[i], 8, txt=header, border=1, align='C', fill=True)  # Reducimos la altura del encabezado
         self.ln()
-        # Ya no establecemos la posición Y aquí, lo haremos antes de imprimir el título en cada página
+
 
 def exportar_tabla_pdf(tabla_treeview):
     """Exporta los datos del Treeview a un PDF con membrete según el diseño."""
@@ -2133,31 +2073,62 @@ def exportar_tabla_pdf(tabla_treeview):
         return
 
     pdf = PDFConMembrete(orientation="L", unit="mm", format="A4")
-    pdf.set_margins(left=15, top=20, right=15)
-    pdf.set_auto_page_break(auto=False, margin=0)  # Deshabilitar el salto de página automático de FPDF
-    pdf.set_font("Arial", size=10)
+    pdf.set_margins(left=5, top=20, right=5)
+    pdf.set_auto_page_break(auto=False, margin=0)
+    pdf.set_font("Arial", size=7)
     pdf.add_page()
 
-    # --- Configuración Inicial de la Tabla ---
+    # --- Configuración de Anchos de Columna Dinámica Basada en Encabezados Comunes ---
     cols = tabla_treeview["columns"]
     headers = [tabla_treeview.heading(col)["text"] for col in cols]
-    col_widths = [35] * len(cols)
+    available_width = pdf.w - pdf.l_margin - pdf.r_margin
+    lapso_width_fixed = 50  # Mantenemos un ancho fijo para "Lapso"
+    col_widths = []
+
+    new_headers = list(headers)
+    if "Stock Actual" in new_headers:
+        index_stock = new_headers.index("Stock Actual")
+        new_headers[index_stock] = "Stock"
+    if "Cantidad Consumida" in new_headers:
+        index_cantidad = new_headers.index("Cantidad Consumida")
+        new_headers[index_cantidad] = "Cantidad"
+
+    if tuple(new_headers) == ("Departamento", "Producto", "Categoría", "Cantidad", "Lapso", "Stock"):
+        col_widths = [
+            available_width * 0.15,  # Departamento
+            available_width * 0.30,  # Producto
+            available_width * 0.15,  # Categoría
+            available_width * 0.10,  # Cantidad
+            lapso_width_fixed,       # Lapso
+            available_width * 0.10,  # Stock
+        ]
+    elif tuple(new_headers) == ("Categoría", "Producto", "Cantidad", "Lapso", "Stock"):
+        remaining_width = available_width - lapso_width_fixed
+        col_widths = [
+            remaining_width * 0.15,  # Categoría (Mismo ancho que Departamento)
+            remaining_width * 0.30,  # Producto (Mismo ancho)
+            remaining_width * 0.10,  # Cantidad (Mismo ancho)
+            lapso_width_fixed,       # Lapso (Mismo ancho fijo)
+            remaining_width * 0.10,  # Stock (Mismo ancho)
+        ]
+    else:
+        # Configuración de anchos por defecto si no coinciden los encabezados esperados
+        col_widths = [available_width / len(headers)] * len(headers)
+
     total_width = sum(col_widths)
     x_start = (pdf.w - total_width) / 2
-    row_height = 8  # Altura de cada fila de datos
+    row_height = 7
 
     # --- Iterar sobre los Datos e Imprimir Filas por página ---
-    pdf.set_font("Arial", '', 9)
     pdf.set_text_color(0, 0, 0)
     items = tabla_treeview.get_children()
     num_items = len(items)
     filas_impresas = 0
 
     while filas_impresas < num_items:
-        # Establecer la posición Y para el inicio del contenido de la página (después del membrete superior)
         pdf.set_y(pdf.y_despues_membrete_superior)
         pdf.print_titulo()
-        pdf.print_encabezados_tabla(headers, col_widths, x_start)
+        pdf.print_encabezados_tabla(new_headers, col_widths, x_start)
 
         for i in range(filas_impresas, min(filas_impresas + pdf.filas_por_pagina, num_items)):
             child = items[i]
@@ -2616,7 +2587,6 @@ def mostrar_menu():
     menu_archivo.add_command(label="Importar", command=importar_datos)
     menu_archivo.add_command(label="Exportar", command=exportar_datos)
     menu_archivo.add_separator()
-    menu_archivo.add_command(label="Eliminar producto", command=eliminar_producto)
     menu_archivo.add_command(label="Salir", command=ventana.destroy)
 
     menu_reportes = tk.Menu(menu_principal, tearoff=0)
