@@ -121,6 +121,8 @@ def cargar_datos():
 
 def iniciar_sesion():
     """Permite al usuario iniciar sesión."""
+    global ventana_login  # Declarar como global para poder cerrarla
+
     def iniciar():
         nombre_usuario = entry_nombre.get()
         contrasena = entry_contrasena.get()
@@ -131,10 +133,19 @@ def iniciar_sesion():
             if es_admin:
                 ventana_clave = tk.Toplevel(ventana_login)
                 ventana_clave.title("Clave de Administrador")
+                ventana_clave.configure(bg="#263238") # Fondo oscuro
 
-                tk.Label(ventana_clave, text="Clave:").pack()
-                entry_clave = tk.Entry(ventana_clave, show="*")
-                entry_clave.pack()
+                # --- Estilos ttk Personalizados ---
+                style_clave = ttk.Style(ventana_clave)
+                style_clave.theme_use('clam')
+                style_clave.configure("TLabel", foreground="#eceff1", background="#263238", font=("Arial", 14))
+                style_clave.configure("TEntry", fieldbackground="#f0f0f0", foreground="black", font=("Arial", 14))
+                style_clave.configure("TButton", foreground="#eceff1", background="#37474F", font=("Arial", 14, "bold"))
+                style_clave.configure("TCheckbutton", foreground="#eceff1", background="#263238", font=("Arial", 14))
+
+                ttk.Label(ventana_clave, text="Clave:", background="#263238", foreground="#eceff1", font=("Arial", 14)).pack(pady=5)
+                entry_clave = ttk.Entry(ventana_clave, show="*", font=("Arial", 14), width=20)
+                entry_clave.pack(pady=5)
 
                 def verificar_clave():
                     clave_ingresada = hashlib.sha256(entry_clave.get().encode()).hexdigest()
@@ -143,11 +154,10 @@ def iniciar_sesion():
                         mostrar_menu()
                         ventana_clave.destroy()
                         ventana_login.destroy()
-
                     else:
                         messagebox.showerror("Acceso Denegado", "Clave incorrecta.")
 
-                tk.Button(ventana_clave, text="Verificar", command=verificar_clave).pack()
+                ttk.Button(ventana_clave, text="Verificar", command=verificar_clave, style="TButton").pack(pady=10)
             else:
                 messagebox.showinfo("Acceso Denegado", "No tienes privilegios de administrador.")
                 ventana_login.destroy()
@@ -156,29 +166,37 @@ def iniciar_sesion():
 
     ventana_login = tk.Tk()
     ventana_login.title("Login")
-    ventana_login.configure(bg="#ADD8E6")  # Fondo azul claro
+    ventana_login.configure(bg="#263238")  # Fondo oscuro
+
+    # --- Estilos ttk Personalizados ---
+    style = ttk.Style(ventana_login)
+    style.theme_use('clam')
+    style.configure("TLabel", foreground="#eceff1", background="#263238", font=("Arial", 14))
+    style.configure("TEntry", fieldbackground="#f0f0f0", foreground="black", font=("Arial", 14))
+    style.configure("TButton", foreground="#eceff1", background="#37474F", font=("Arial", 14, "bold"))
+    style.configure("TCheckbutton", foreground="#eceff1", background="#263238", font=("Arial", 14))
 
     # Marco principal para el contenido
-    frame_contenido = tk.Frame(ventana_login, bg="#ADD8E6")
+    frame_contenido = tk.Frame(ventana_login, bg="#263238")
     frame_contenido.pack(padx=20, pady=20, fill="both", expand=True)
 
     # Marco para el logo (a la izquierda)
-    frame_logo = tk.Frame(frame_contenido, bg="#ADD8E6")
+    frame_logo = tk.Frame(frame_contenido, bg="#263238")
     frame_logo.pack(side="left", padx=20, pady=20, fill="both", expand=True)  # Hacer que el marco se expanda
 
     # Cargar el logo y redimensionarlo
     try:
-        imagen_logo = Image.open("C:/Users/monster/Desktop/src/server/routes/imagenes/descarga.jpg")
+        imagen_logo = Image.open("C:/Users/monster/Desktop/src/server/routes/imagenes/logo.png")
         imagen_logo = imagen_logo.resize((300, 300))
         logo = ImageTk.PhotoImage(imagen_logo)
-        label_logo = tk.Label(frame_logo, image=logo, bg="#ADD8E6")
+        label_logo = tk.Label(frame_logo, image=logo, bg="#263238")
         label_logo.image = logo
         label_logo.pack(fill="both", expand=True)  # Hacer que el logo se expanda
     except FileNotFoundError:
         messagebox.showerror("Error", "No se encontró el archivo del logo.")
 
     # Marco para los campos de entrada (a la derecha)
-    frame_campos = tk.Frame(frame_contenido, bg="#ADD8E6")
+    frame_campos = tk.Frame(frame_contenido, bg="#263238")
     frame_campos.pack(side="right", padx=20, pady=20, fill="both", expand=True)  # Hacer que el marco se expanda
 
     # Configurar la cuadrícula para que se expanda
@@ -188,26 +206,20 @@ def iniciar_sesion():
     frame_campos.grid_rowconfigure(2, weight=1)
     frame_campos.grid_rowconfigure(3, weight=1)  # Agregar fila para la casilla de verificación
 
-    # Estilos con fuentes más grandes y campos de entrada más grandes
-    style = ttk.Style(ventana_login)
-    style.configure("TLabel", foreground="black", background="#ADD8E6", font=("Arial", 14))
-    style.configure("TEntry", fieldbackground="white", font=("Arial", 14))
-    style.configure("TButton", foreground="white", background="#FF5733", font=("Arial", 14, "bold"))
-
     # Centrar los campos de entrada
-    tk.Label(frame_campos, text="Usuario:", bg="#ADD8E6").grid(row=0, column=0, pady=5, sticky="e")
-    entry_nombre = tk.Entry(frame_campos, width=30)  # Aumentar el ancho del campo de entrada
+    ttk.Label(frame_campos, text="Usuario:", background="#263238", foreground="#eceff1").grid(row=0, column=0, pady=5, sticky="e")
+    entry_nombre = ttk.Entry(frame_campos, width=30)  # Aumentar el ancho del campo de entrada
     entry_nombre.grid(row=0, column=1, pady=5, sticky="ew")  # sticky="ew" para expandir horizontalmente
 
-    tk.Label(frame_campos, text="Contraseña:", bg="#ADD8E6").grid(row=1, column=0, pady=5, sticky="e")
-    entry_contrasena = tk.Entry(frame_campos, show="*", width=30)  # Aumentar el ancho del campo de entrada
+    ttk.Label(frame_campos, text="Contraseña:", background="#263238", foreground="#eceff1").grid(row=1, column=0, pady=5, sticky="e")
+    entry_contrasena = ttk.Entry(frame_campos, show="*", width=30)  # Aumentar el ancho del campo de entrada
     entry_contrasena.grid(row=1, column=1, pady=5, sticky="ew")  # sticky="ew" para expandir horizontalmente
 
     var_admin = tk.IntVar()  # Variable para la casilla de verificación
-    check_admin = tk.Checkbutton(frame_campos, text="Administrador", variable=var_admin, bg="#ADD8E6")
-    check_admin.grid(row=2, column=0, columnspan=2, pady=5)
+    check_admin = ttk.Checkbutton(frame_campos, text="Administrador", variable=var_admin)
+    check_admin.grid(row=2, column=0, columnspan=2, pady=5, sticky="w") # sticky="w" para alinear a la izquierda
 
-    tk.Button(frame_campos, text="Iniciar Sesión", command=iniciar, bg="#FF5733", fg="white").grid(row=3, column=0, columnspan=2, pady=10, sticky="ew")  # sticky="ew" para expandir horizontalmente
+    ttk.Button(frame_campos, text="Iniciar Sesión", command=iniciar, style="TButton").grid(row=3, column=0, columnspan=2, pady=10, sticky="ew")  # sticky="ew" para expandir horizontalmente
 
     ventana_login.mainloop()
                             #Hasta aqui funciones de inicio de sesion
@@ -2624,4 +2636,4 @@ def mostrar_menu():
     ventana.mainloop()
 
 # --- Ejecución de la aplicación ---
-mostrar_menu()
+iniciar_sesion()
