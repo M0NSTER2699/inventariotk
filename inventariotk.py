@@ -28,6 +28,12 @@ clave_admin = hashlib.sha256("NEVA".encode()).hexdigest()
 salidas_departamentos = []
 entradas_departamentos=[]
 salidas_espera=[]
+datos_consumo_para_guardar = []
+datos_reportes_para_guardar = {
+    "Bajo Stock": [],
+    "Entradas": [],
+    "Salidas": [],
+    "Salidas en Espera": []}
 
 #funciones de inicio de sesion
 
@@ -36,17 +42,20 @@ salidas_espera=[]
 
 def guardar_datos():
     """Guarda los datos en un archivo JSON."""
+    global datos_consumo_para_guardar, datos_reportes_para_guardar
     datos = {
         "inventario": {
             producto: {
-                **datos,
-                "fecha_entrada": datos["fecha_entrada"].isoformat() if isinstance(datos["fecha_entrada"], datetime.date) else None if datos["fecha_entrada"] is None or datos["fecha_entrada"] == "null" else str(datos["fecha_entrada"]),
-                "fecha_salida": datos["fecha_salida"].isoformat() if isinstance(datos["fecha_salida"], datetime.date) else None if datos["fecha_salida"] is None or datos["fecha_salida"] == "null" else str(datos["fecha_salida"])
+                **datos_prod,
+                "fecha_entrada": datos_prod["fecha_entrada"].isoformat() if isinstance(datos_prod["fecha_entrada"], datetime.date) else None if datos_prod["fecha_entrada"] is None or datos_prod["fecha_entrada"] == "null" else str(datos_prod["fecha_entrada"]),
+                "fecha_salida": datos_prod["fecha_salida"].isoformat() if isinstance(datos_prod["fecha_salida"], datetime.date) else None if datos_prod["fecha_salida"] is None or datos_prod["fecha_salida"] == "null" else str(datos_prod["fecha_salida"])
             }
-            for producto, datos in inventario.items()
+            for producto, datos_prod in inventario.items()
         },
         "usuarios": usuarios,
-        "salidas_departamentos": salidas_departamentos
+        "salidas_departamentos": salidas_departamentos,
+        "Consumo": datos_consumo_para_guardar,
+        "Reportes": datos_reportes_para_guardar # Añadimos la sección de Reportes
     }
     try:
         with open("inventario.json", "w", encoding="utf-8") as archivo:
@@ -61,7 +70,14 @@ def guardar_datos():
 
 def cargar_datos():
     """Carga los datos desde un archivo JSON."""
-    global inventario, usuarios, salidas_departamentos
+    global inventario, usuarios, salidas_departamentos, datos_consumo_para_guardar, datos_reportes_para_guardar
+    datos_consumo_para_guardar = []
+    datos_reportes_para_guardar = {
+        "Bajo Stock": [],
+        "Entradas": [],
+        "Salidas": [],
+        "Salidas en Espera": []
+    }
     try:
         with open("inventario.json", "r", encoding="utf-8") as archivo:
             datos = json.load(archivo)
@@ -70,7 +86,6 @@ def cargar_datos():
                 fecha_entrada = datos_producto.get("fecha_entrada")
                 fecha_salida = datos_producto.get("fecha_salida")
 
-                # Manejar los valores "null"
                 if fecha_entrada == "null" or fecha_entrada is None:
                     fecha_entrada = None
                 else:
@@ -94,23 +109,62 @@ def cargar_datos():
                 }
             usuarios = datos.get("usuarios", [])
             salidas_departamentos = datos.get("salidas_departamentos", [])
+            datos_consumo_para_guardar = datos.get("Consumo", [])
+            datos_reportes_para_guardar = datos.get("Reportes", {
+                "Bajo Stock": [],
+                "Entradas": [],
+                "Salidas": [],
+                "Salidas en Espera": []
+            })
+
     except FileNotFoundError:
         messagebox.showinfo("Cargar Datos", "No se encontró el archivo inventario.json. Se creará uno nuevo.")
         inventario = {}
         usuarios = []
         salidas_departamentos = []
+        datos_consumo_para_guardar = []
+        datos_reportes_para_guardar = {
+            "Bajo Stock": [],
+            "Entradas": [],
+            "Salidas": [],
+            "Salidas en Espera": []
+        }
     except json.JSONDecodeError:
         messagebox.showerror("Error", "No se pudieron cargar los datos: El archivo JSON está corrupto.")
         inventario = {}
         usuarios = []
         salidas_departamentos = []
+        datos_consumo_para_guardar = []
+        datos_reportes_para_guardar = {
+            "Bajo Stock": [],
+            "Entradas": [],
+            "Salidas": [],
+            "Salidas en Espera": []
+        }
     except ValueError as e:
         messagebox.showerror("Error", f"No se pudieron cargar los datos: {e}")
         inventario = {}
         usuarios = []
         salidas_departamentos = []
+        datos_consumo_para_guardar = []
+        datos_reportes_para_guardar = {
+            "Bajo Stock": [],
+            "Entradas": [],
+            "Salidas": [],
+            "Salidas en Espera": []
+        }
     except Exception as e:
         messagebox.showerror("Error", f"Error inesperado al cargar los datos: {e}")
+        inventario = {}
+        usuarios = []
+        salidas_departamentos = []
+        datos_consumo_para_guardar = []
+        datos_reportes_para_guardar = {
+            "Bajo Stock": [],
+            "Entradas": [],
+            "Salidas": [],
+            "Salidas en Espera": []
+        }
 
 
 
@@ -137,7 +191,7 @@ def iniciar_sesion():
     style.theme_use('clam')
     style.configure("TLabel", foreground="#eceff1", background="#263238", font=("Arial", 14))
     style.configure("TEntry", fieldbackground="#f0f0f0", foreground="black", font=("Arial", 14))
-    style.configure("TButton", foreground="#eceff1", background="#37474F", font=("Arial", 14, "bold"))
+    style.configure("TButton", foreground="#eceff1", background="#008000", font=("Arial", 14, "bold"))
     style.configure("TCheckbutton", foreground="#eceff1", background="#263238", font=("Arial", 14))
 
     # Marco principal para el contenido
@@ -187,30 +241,31 @@ def iniciar_sesion():
         nombre_usuario = entry_nombre.get()
         contrasena = entry_contrasena.get()
         contrasena_hash = hashlib.sha256(contrasena.encode()).hexdigest()
-        es_admin = var_admin.get()  # Obtener el valor de la casilla de verificación
+        es_admin_seleccionado = var_admin.get()  # Obtener el valor de la casilla de verificación
+
+        if not es_admin_seleccionado:
+            messagebox.showerror("Error", "Debe marcar la casilla de 'Administrador' para iniciar sesión.")
+            return  # Detener la función si la casilla no está marcada
 
         if nombre_usuario in usuarios and usuarios[nombre_usuario] == contrasena_hash:
-            if es_admin:
-                ventana_clave = tk.Toplevel(ventana_login)
-                ventana_clave.title("Clave de Administrador")
-                ventana_clave.configure(bg="#263238") # Fondo oscuro
+            # La casilla está marcada y las credenciales son correctas, mostrar la ventana de clave
+            ventana_clave = tk.Toplevel(ventana_login)
+            ventana_clave.title("Clave de Administrador")
+            ventana_clave.configure(bg="#263238") # Fondo oscuro
 
-                # --- Estilos ttk Personalizados ---
-                style_clave = ttk.Style(ventana_clave)
-                style_clave.theme_use('clam')
-                style_clave.configure("TLabel", foreground="#eceff1", background="#263238", font=("Arial", 14))
-                style_clave.configure("TEntry", fieldbackground="#f0f0f0", foreground="black", font=("Arial", 14))
-                style_clave.configure("TButton", foreground="#eceff1", background="#37474F", font=("Arial", 14, "bold"))
-                style_clave.configure("TCheckbutton", foreground="#eceff1", background="#263238", font=("Arial", 14))
+            # --- Estilos ttk Personalizados ---
+            style_clave = ttk.Style(ventana_clave)
+            style_clave.theme_use('clam')
+            style_clave.configure("TLabel", foreground="#eceff1", background="#263238", font=("Arial", 14))
+            style_clave.configure("TEntry", fieldbackground="#f0f0f0", foreground="black", font=("Arial", 14))
+            style_clave.configure("TButton", foreground="#eceff1", background="#008000", font=("Arial", 14, "bold"))
+            style_clave.configure("TCheckbutton", foreground="#eceff1", background="#263238", font=("Arial", 14))
 
-                ttk.Label(ventana_clave, text="Clave:", background="#263238", foreground="#eceff1", font=("Arial", 14)).pack(pady=5)
-                entry_clave_admin = ttk.Entry(ventana_clave, show="*", font=("Arial", 14), width=20)
-                entry_clave_admin.pack(pady=5)
+            ttk.Label(ventana_clave, text="Clave:", background="#263238", foreground="#eceff1", font=("Arial", 14)).pack(pady=5)
+            entry_clave_admin = ttk.Entry(ventana_clave, show="*", font=("Arial", 14), width=20)
+            entry_clave_admin.pack(pady=5)
 
-                ttk.Button(ventana_clave, text="Verificar", command=lambda: verificar_clave(ventana_clave, entry_clave_admin, ventana_login), style="TButton").pack(pady=10)
-            else:
-                ventana_login.destroy()
-                mostrar_menu()
+            ttk.Button(ventana_clave, text="Verificar", command=lambda: verificar_clave(ventana_clave, entry_clave_admin, ventana_login), style="TButton").pack(pady=10)
         else:
             messagebox.showerror("Error", "Nombre de usuario o contraseña incorrectos.")
 
@@ -926,61 +981,87 @@ def calcular_consumo_periodo(periodo):
 
     return consumo_departamentos, total_consumo
 
-def mostrar_consumo_periodo(periodo_nombre, consumo_periodo):
-    """Muestra el consumo para un período específico en una tabla."""
-    consumo_departamentos, total_consumo = consumo_periodo
-
-    ventana_consumo = tk.Toplevel(ventana)  # Usar la variable global 'ventana'
-    ventana_consumo.title(f"Consumo {periodo_nombre}")
-    ventana_consumo.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+def mostrar_consumo_periodos(consumo_diario, consumo_semanal, consumo_mensual):
+    """Muestra el consumo para los tres períodos en una tabla y prepara los datos para guardar."""
+    ventana_consumo = tk.Toplevel(ventana)
+    ventana_consumo.title("Consumo por Período")
+    ventana_consumo.configure(bg="#A9A9A9")
 
     # --- Estilos ttk Personalizados ---
     style = ttk.Style(ventana_consumo)
     style.theme_use('clam')
-
-    style.configure("CustomLabel.TLabel",
-                    foreground="#ffffff",
-                    background="#A9A9A9",
-                    font=("Segoe UI", 10, "bold"))
-
-    style.configure("Grid.Treeview",
-                    foreground="#000000",
-                    background="#ffffff",
-                    font=("Segoe UI", 10))
-    style.configure("Grid.Treeview.Heading",
-                    foreground="#000000",
-                    background="#d9d9d9",
-                    font=("Segoe UI", 10, "bold"))
-    style.map("Grid.Treeview",
-              background=[('selected', '#bddfff')],
-              foreground=[('selected', '#000000')])
+    style.configure("CustomLabel.TLabel", foreground="#ffffff", background="#A9A9A9", font=("Segoe UI", 10, "bold"))
+    style.configure("Grid.Treeview", foreground="#000000", background="#ffffff", font=("Segoe UI", 10))
+    style.configure("Grid.Treeview.Heading", foreground="#000000", background="#d9d9d9", font=("Segoe UI", 10, "bold"))
+    style.map("Grid.Treeview", background=[('selected', '#bddfff')], foreground=[('selected', '#000000')])
 
     # Treeview (tabla) para mostrar el consumo
-    tabla_consumo = ttk.Treeview(ventana_consumo, columns=("Departamento", "Producto", "Consumo", "Unidad Medida", "Porcentaje"), show="headings", style="Grid.Treeview")
+    tabla_consumo = ttk.Treeview(ventana_consumo, columns=("Departamento", "Producto", "Diario", "Semanal", "Mensual", "Unidad Medida", "Porcentaje"), show="headings", style="Grid.Treeview")
     tabla_consumo.pack(fill=tk.BOTH, expand=True)
 
     # Definir encabezados de columna
     tabla_consumo.heading("Departamento", text="Departamento", anchor=tk.W)
     tabla_consumo.heading("Producto", text="Producto", anchor=tk.W)
-    tabla_consumo.heading("Consumo", text="Consumo", anchor=tk.W)
+    tabla_consumo.heading("Diario", text="Diario", anchor=tk.W)
+    tabla_consumo.heading("Semanal", text="Semanal", anchor=tk.W)
+    tabla_consumo.heading("Mensual", text="Mensual", anchor=tk.W)
     tabla_consumo.heading("Unidad Medida", text="Unidad Medida", anchor=tk.W)
     tabla_consumo.heading("Porcentaje", text="Porcentaje", anchor=tk.W)
 
     # Configurar ancho de columnas
     tabla_consumo.column("Departamento", width=150)
     tabla_consumo.column("Producto", width=150)
-    tabla_consumo.column("Consumo", width=80)
+    tabla_consumo.column("Diario", width=80)
+    tabla_consumo.column("Semanal", width=80)
+    tabla_consumo.column("Mensual", width=80)
     tabla_consumo.column("Unidad Medida", width=100)
     tabla_consumo.column("Porcentaje", width=100)
 
-    # Insertar datos en la tabla
-    for departamento, productos in consumo_departamentos.items():
-        for producto, cantidad in productos.items():
-            unidad_medida = inventario[producto]["unidad_medida"]
-            porcentaje = (cantidad / total_consumo) * 100 if total_consumo > 0 else 0
-            tabla_consumo.insert("", tk.END, values=(departamento, producto, cantidad, unidad_medida, f"{porcentaje:.2f}%"))
+    # Lista para almacenar los datos de consumo para guardar
+    datos_consumo_guardar = []
 
-    
+    # Insertar datos en la tabla y almacenar para guardar
+    departamentos = set()
+    productos = set()
+    for consumo in [consumo_diario, consumo_semanal, consumo_mensual]:
+        departamentos.update(consumo[0].keys())
+        for productos_departamento in consumo[0].values():
+            productos.update(productos_departamento.keys())
+
+    for departamento in departamentos:
+        for producto in productos:
+            diario = consumo_diario[0].get(departamento, {}).get(producto, 0)
+            semanal = consumo_semanal[0].get(departamento, {}).get(producto, 0)
+            mensual = consumo_mensual[0].get(departamento, {}).get(producto, 0)
+            unidad_medida = inventario.get(producto, {}).get("unidad_medida", "N/A")
+
+            # Calcular el consumo total para el producto
+            consumo_total = diario + semanal + mensual
+
+            # Calcular el porcentaje de consumo
+            total_consumo_general = sum([consumo_diario[1], consumo_semanal[1], consumo_mensual[1]])
+            porcentaje = (consumo_total / total_consumo_general) * 100 if total_consumo_general > 0 else 0
+
+            values = (departamento, producto, diario, semanal, mensual, unidad_medida, f"{porcentaje:.2f}%")
+            tabla_consumo.insert("", tk.END, values=values)
+
+            # Almacenar los datos para guardar
+            datos_consumo_guardar.append({
+                "departamento": departamento,
+                "producto": producto,
+                "diario": diario,
+                "semanal": semanal,
+                "mensual": mensual,
+                "unidad_medida": unidad_medida,
+                "porcentaje": f"{porcentaje:.2f}%"
+            })
+
+    # Guardar los datos de consumo usando la función guardar_datos
+    global datos_consumo_para_guardar
+    datos_consumo_para_guardar = datos_consumo_guardar
+
+# Variable global para almacenar los datos de consumo
+datos_consumo_para_guardar = []
 
     
 
@@ -1009,63 +1090,48 @@ def mostrar_consumo_periodo(periodo_nombre, consumo_periodo):
                                     #Funciones de reportes:
 
 def generar_reporte_bajo_stock():
-    """Genera un reporte de productos con bajo stock en una tabla."""
+    """Genera un reporte de productos con bajo stock en una tabla y almacena los datos."""
+    global datos_reportes_para_guardar
     ventana_reporte = tk.Toplevel(ventana)
     ventana_reporte.title("Reporte de Bajo Stock")
-    ventana_reporte.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+    ventana_reporte.configure(bg="#A9A9A9")
 
-    # --- Estilos ttk Personalizados ---
     style = ttk.Style(ventana_reporte)
     style.theme_use('clam')
+    style.configure("CustomLabel.TLabel", foreground="#ffffff", background="#A9A9A9", font=("Segoe UI", 10, "bold"))
+    style.configure("Grid.Treeview", foreground="#000000", background="#ffffff", font=("Segoe UI", 10))
+    style.configure("Grid.Treeview.Heading", foreground="#000000", background="#d9d9d9", font=("Segoe UI", 10, "bold"))
+    style.map("Grid.Treeview", background=[('selected', '#bddfff')], foreground=[('selected', '#000000')])
 
-    style.configure("CustomLabel.TLabel",
-                    foreground="#ffffff",
-                    background="#A9A9A9",
-                    font=("Segoe UI", 10, "bold"))
-
-    style.configure("Grid.Treeview",
-                    foreground="#000000",
-                    background="#ffffff",
-                    font=("Segoe UI", 10))
-    style.configure("Grid.Treeview.Heading",
-                    foreground="#000000",
-                    background="#d9d9d9",
-                    font=("Segoe UI", 10, "bold"))
-    style.map("Grid.Treeview",
-              background=[('selected', '#bddfff')],
-              foreground=[('selected', '#000000')])
-
-    umbral_stock_minimo = 1  # Puedes ajustar este valor
+    umbral_stock_minimo = 1
     productos_bajo_stock = []
     for producto, datos in inventario.items():
         if datos["stock"] < umbral_stock_minimo:
             productos_bajo_stock.append((producto, datos))
 
+    datos_reporte = [] # Lista para almacenar los datos del reporte
     if productos_bajo_stock:
-        # Treeview (tabla) para mostrar el reporte de bajo stock
         tabla_bajo_stock = ttk.Treeview(ventana_reporte, columns=("Producto", "Stock Actual", "Unidad Medida"), show="headings", style="Grid.Treeview")
         tabla_bajo_stock.pack(fill=tk.BOTH, expand=True)
-
-        # Definir encabezados de columna
         tabla_bajo_stock.heading("Producto", text="Producto", anchor=tk.W)
         tabla_bajo_stock.heading("Stock Actual", text="Stock Actual", anchor=tk.W)
         tabla_bajo_stock.heading("Unidad Medida", text="Unidad Medida", anchor=tk.W)
-
-        # Configurar ancho de columnas
         tabla_bajo_stock.column("Producto", width=150)
         tabla_bajo_stock.column("Stock Actual", width=100)
         tabla_bajo_stock.column("Unidad Medida", width=100)
 
-        # Insertar datos en la tabla
         for producto, datos in productos_bajo_stock:
             tabla_bajo_stock.insert("", tk.END, values=(producto, datos["stock"], datos["unidad_medida"]))
+            datos_reporte.append({"Producto": producto, "Stock Actual": datos["stock"], "Unidad Medida": datos["unidad_medida"]})
 
-        # Agregar barra de desplazamiento vertical
         scrollbar_y = ttk.Scrollbar(ventana_reporte, orient="vertical", command=tabla_bajo_stock.yview)
         scrollbar_y.pack(side="right", fill="y")
         tabla_bajo_stock.configure(yscrollcommand=scrollbar_y.set)
     else:
         messagebox.showinfo("Reporte de Bajo Stock", "No hay productos con bajo stock.")
+
+    datos_reportes_para_guardar["Bajo Stock"] = datos_reporte
+    
         
 
 
@@ -1126,6 +1192,12 @@ def generar_reporte_entradas():
     scrollbar_vertical = ttk.Scrollbar(ventana_reporte, orient="vertical", command=tabla_entradas.yview)
     scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
     tabla_entradas.configure(yscrollcommand=scrollbar_vertical.set)
+
+    datos_reporte = [] # Lista para almacenar los datos del reporte
+    for entrada in entradas_departamentos:
+        fecha_str = entrada["fecha"].strftime("%Y-%m-%d") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
+        tabla_entradas.insert("", tk.END, values=(entrada["producto"], entrada["cantidad"], fecha_str, entrada["destino"]))
+        datos_reporte.append({"Producto": entrada["producto"], "Cantidad": entrada["cantidad"], "Fecha": fecha_str, "Destino": entrada["destino"]})
 
     # Insertar datos iniciales en la tabla
     for entrada in entradas_departamentos:
@@ -1243,6 +1315,7 @@ def generar_reporte_entradas():
             menu_contextual.post(event.x_root, event.y_root)
 
     tabla_entradas.bind("<Button-3>", mostrar_menu_contextual)
+    datos_reportes_para_guardar["Entradas"] = datos_reporte
     
 
 
@@ -1291,6 +1364,12 @@ def generar_reporte_salidas():
     scrollbar = ttk.Scrollbar(ventana_reporte_salidas, orient="vertical", command=tree.yview)
     tree.configure(yscrollcommand=scrollbar.set)
     scrollbar.grid(row=0, column=1, sticky="ns", pady=10)
+
+    datos_reporte = [] # Lista para almacenar los datos del reporte
+    for salida in salidas_departamentos:
+        fecha_str = salida["fecha"].strftime("%Y-%m-%d") if isinstance(salida["fecha"], datetime.date) else str(salida["fecha"])
+        tree.insert("", "end", values=(salida["producto"], salida["cantidad"], fecha_str, salida["destino"], salida["requisicion"]))
+        datos_reporte.append({"Producto": salida["producto"], "Cantidad": salida["cantidad"], "Fecha": fecha_str, "Destino": salida["destino"], "Requisición": salida["requisicion"]})
 
     for salida in salidas_departamentos:
         fecha_str = salida["fecha"].strftime("%Y-%m-%d") if isinstance(salida["fecha"], datetime.date) else str(salida["fecha"])
@@ -1409,6 +1488,7 @@ def generar_reporte_salidas():
 
     ventana_reporte_salidas.grid_columnconfigure(0, weight=1)
     ventana_reporte_salidas.grid_rowconfigure(0, weight=1)
+    datos_reportes_para_guardar["Salidas"] = datos_reporte
 
 ventana_reporte_salidas_espera = None  # Variable global para la ventana del reporte de espera
 tabla_salidas_espera = None           # Variable global para la tabla
@@ -1466,6 +1546,12 @@ def generar_reporte_salidas_espera():
     scrollbar_vertical = ttk.Scrollbar(ventana_reporte_salidas_espera, orient="vertical", command=tabla_salidas_espera.yview)
     scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=10)
     tabla_salidas_espera.configure(yscrollcommand=scrollbar_vertical.set)
+
+
+    datos_reporte = [] # Lista para almacenar los datos del reporte
+    for salida in salidas_espera:
+        tabla_salidas_espera.insert("", tk.END, values=(salida["producto"], salida["cantidad"], salida["departamento"]))
+        datos_reporte.append({"Producto": salida["producto"], "Cantidad": salida["cantidad"], "Departamento": salida["departamento"]})
 
     # Insertar datos iniciales en la tabla
     actualizar_tabla_salidas_espera()
@@ -1637,6 +1723,8 @@ def generar_reporte_salidas_espera():
 
     ventana_reporte_salidas_espera.grid_columnconfigure(0, weight=1)
     ventana_reporte_salidas_espera.grid_rowconfigure(0, weight=1)
+
+    datos_reportes_para_guardar["Salidas en Espera"] = datos_reporte
 
 
 
