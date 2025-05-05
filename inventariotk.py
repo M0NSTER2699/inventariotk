@@ -18,6 +18,7 @@ from PIL import Image as pilimage
 
 
 from fpdf import FPDF
+import uuid
 
 
 
@@ -82,7 +83,7 @@ def cargar_datos():
         with open("inventario.json", "r", encoding="utf-8") as archivo:
             datos = json.load(archivo)
             inventario = {}
-            for producto, datos_producto in datos["inventario"].items():
+            for codigo_producto, datos_producto in datos.get("inventario", {}).items(): # Asumimos que las claves en "inventario" son los códigos
                 fecha_entrada = datos_producto.get("fecha_entrada")
                 fecha_salida = datos_producto.get("fecha_salida")
 
@@ -102,7 +103,7 @@ def cargar_datos():
                     except ValueError:
                         fecha_salida = fecha_salida # Mantener la cadena original si no es un formato ISO válido
 
-                inventario[producto] = {
+                inventario[codigo_producto] = {
                     **datos_producto,
                     "fecha_entrada": fecha_entrada,
                     "fecha_salida": fecha_salida
@@ -311,20 +312,49 @@ def abrir_calendario(ventana_padre, entry_fecha):
                                             #funciones principales:
        
 def agregar_producto():
-    """Agrega un producto al inventario con fecha de entrada manual."""
-    
+    """Agrega un producto al inventario con fecha de entrada manual y código basado en la categoría."""
+
+    def generar_codigo(categoria):
+        """Genera un código único basado en la categoría."""
+        prefijos_categoria = {
+            "COMIDA": "COM",
+            "MATERIALES Y ARTICULOS DE OFICINA": "MAT",
+            "TONNER": "TON",
+            "MATERIAL DE LIMPIEZA": "LIM",
+            "PLASTICO": "PLA",
+            "MATERIAL DE FERRETERIA": "FER",
+            "OTROS": "OTR"
+            # Añade aquí más categorías y sus prefijos según necesites
+        }
+        prefijo = prefijos_categoria.get(categoria.upper(), "GEN")  # "GEN" para categorías no definidas
+
+        # Buscar el último código usado para esta categoría y generar el siguiente
+        contador = 1
+        for codigo, producto in inventario.items():  # Iteramos por código y producto
+            if producto.get("categoria", "").upper() == categoria.upper() and codigo.startswith(prefijo + "-"):
+                try:
+                    numero = int(codigo.split("-")[1])
+                    contador = max(contador, numero + 1)
+                except (IndexError, ValueError):
+                    pass  # Ignorar códigos con formato incorrecto
+
+        return f"{prefijo}-{contador:03d}"
+
     def agregar():
-        producto = entry_producto.get()
-        categoria = combo_categoria.get()  # Obtener la categoría seleccionada del Combobox
+        producto_nombre = entry_producto.get()
+        categoria = categoria_var.get()
         destino_entrada = entry_destino_entrada.get()
         entrada = int(entry_entrada.get())
-        unidad_medida = combo_unidad_medida.get() #Obtener Unidad de Medida del combo box
+        unidad_medida = unidad_medida_var.get()
         fecha_str = entry_fecha_entrada.get()
         fecha_entrada = datetime.datetime.strptime(fecha_str, "%Y-%m-%d").date()
         fecha_salida = datetime.datetime.strptime(fecha_str, "%Y-%m-%d").date()
 
         salida = 0
-        inventario[producto] = {
+        codigo_producto = generar_codigo(categoria)
+
+        inventario[codigo_producto] = {  # Usamos codigo_producto como clave
+            "nombre": producto_nombre,  # Guardamos el nombre
             "categoria": categoria,
             "destino_entrada": destino_entrada,
             "entrada": entrada,
@@ -333,36 +363,89 @@ def agregar_producto():
             "unidad_medida": unidad_medida,
             "fecha_entrada": fecha_entrada,
             "fecha_salida": "None",
-            "destino_salida": ""
+            "destino_salida": "",
+            "codigo_producto": codigo_producto
         }
-        messagebox.showinfo("Producto Agregado", f"Producto '{producto}' agregado al inventario. Fecha de entrada: {fecha_entrada}")
+        messagebox.showinfo("Producto Agregado", f"Producto '{producto_nombre}' agregado al inventario con código: {codigo_producto}, Fecha de entrada: {fecha_entrada}")
         ventana_agregar.destroy()
 
-        # Registrar la entrada en el historial
         entradas_departamentos.append({
-            "producto": producto,
+            "producto": producto_nombre,
             "cantidad": entrada,
             "fecha": fecha_entrada,
-            "destino": destino_entrada
+            "destino": destino_entrada,
+            "codigo_producto": codigo_producto
         })
-        
-    
+
+        guardar_datos()
+
+    def agregar_nueva_categoria():
+        def guardar_nueva():
+            nueva_cat = nueva_categoria_entry.get().strip().upper()
+            if nueva_cat and nueva_cat not in categorias_list:
+                categorias_list.insert(len(categorias_list) - 1, nueva_cat) # Insertar antes de "Añadir nueva"
+                categorias_var.set(categorias_list)
+                combo_categoria['values'] = categorias_list
+                categoria_var.set(nueva_cat) # Establecer la nueva categoría como seleccionada
+                ventana_nueva_categoria.destroy()
+            else:
+                messagebox.showerror("Error", "Por favor, ingrese una categoría válida que no exista.")
+
+        ventana_nueva_categoria = tk.Toplevel(ventana_agregar)
+        ventana_nueva_categoria.title("Nueva Categoría")
+        ttk.Label(ventana_nueva_categoria, text="Ingrese la nueva categoría:", style="CustomLabel.TLabel").pack(padx=10, pady=10)
+        nueva_categoria_entry = ttk.Entry(ventana_nueva_categoria, style="CustomEntry.TEntry")
+        nueva_categoria_entry.pack(padx=10, pady=5)
+        ttk.Button(ventana_nueva_categoria, text="Guardar", command=guardar_nueva, style="CustomButton.TButton").pack(pady=10)
+
+    def agregar_nueva_unidad():
+        def guardar_nueva_unidad():
+            nueva_unidad = nueva_unidad_entry.get().strip()
+            if nueva_unidad and nueva_unidad not in unidades_list:
+                unidades_list.insert(len(unidades_list) - 1, nueva_unidad) # Insertar antes de "Añadir nueva"
+                unidades_medida_var.set(unidades_list)
+                combo_unidad_medida['values'] = unidades_list
+                unidad_medida_var.set(nueva_unidad) # Establecer la nueva unidad como seleccionada
+                ventana_nueva_unidad.destroy()
+            else:
+                messagebox.showerror("Error", "Por favor, ingrese una unidad de medida válida que no exista.")
+
+        ventana_nueva_unidad = tk.Toplevel(ventana_agregar)
+        ventana_nueva_unidad.title("Nueva Unidad de Medida")
+        ttk.Label(ventana_nueva_unidad, text="Ingrese la nueva unidad de medida:", style="CustomLabel.TLabel").pack(padx=10, pady=10)
+        nueva_unidad_entry = ttk.Entry(ventana_nueva_unidad, style="CustomEntry.TEntry")
+        nueva_unidad_entry.pack(padx=10, pady=5)
+        ttk.Button(ventana_nueva_unidad, text="Guardar", command=guardar_nueva_unidad, style="CustomButton.TButton").pack(pady=10)
+
+    def mostrar_opciones_categoria(event):
+        if categoria_var.get() == "Añadir nueva":
+            agregar_nueva_categoria()
+            categoria_var.set(categorias_list[0] if categorias_list and categorias_list[-1] == "Añadir nueva" else "") # Resetear la selección
+
+    def mostrar_opciones_unidad(event):
+        if unidad_medida_var.get() == "Añadir nueva":
+            agregar_nueva_unidad()
+            unidad_medida_var.set(unidades_list[0] if unidades_list and unidades_list[-1] == "Añadir nueva" else "") # Resetear la selección
 
     ventana_agregar = tk.Toplevel(ventana)
     ventana_agregar.title("Agregar Producto")
     ventana_agregar.configure(bg="#000080")
 
-    # Obtener las categorías existentes del inventario
-    categorias = list(set(producto["categoria"] for producto in inventario.values()))
-    categorias.append("Añadir nueva")  # Agregar la opción "Añadir nueva"
+    # Listas predeterminadas
+    categorias_predeterminadas = ["COMIDA", "MATERIALES Y ARTICULOS DE OFICINA", "TONNER", "MATERIAL DE LIMPIEZA", "PLASTICO", "MATERIAL DE FERRETERIA", "OTROS", "Añadir nueva"]
+    unidades_medida_predeterminadas = ["Unidad", "Litro", "Kilogramo", "Metro", "Caja", "Paquete", "Añadir nueva"]
 
-    #Obtener Unidades de medida existentes
-    unidades_medida = list(set(producto["unidad_medida"] for producto in inventario.values()))
-    unidades_medida.append("Añadir nueva")
-
+    # Variables para los Combobox
+    categorias_var = tk.StringVar() ### Modificación: Inicializar sin valor
+    unidades_medida_var = tk.StringVar() ### Modificación: Inicializar sin valor
+    categoria_var = tk.StringVar()
+    unidad_medida_var = tk.StringVar()
+    categorias_list = sorted(categorias_predeterminadas) ### Modificación: Inicializar directamente
+    unidades_list = sorted(unidades_medida_predeterminadas) ### Modificación: Inicializar directamente
+    categorias_var.set(categorias_list[0] if categorias_list else "") ### Modificación: Establecer valor inicial
+    unidades_medida_var.set(unidades_list[0] if unidades_list else "") ### Modificación: Establecer valor inicial
 
     def abrir_calendario():
-        """Abre un calendario para seleccionar la fecha."""
         def seleccionar_fecha():
             fecha_seleccionada = cal.get_date()
             entry_fecha_entrada.delete(0, tk.END)
@@ -375,49 +458,22 @@ def agregar_producto():
         cal.pack(padx=10, pady=10)
         tk.Button(ventana_calendario, text="Seleccionar", command=seleccionar_fecha).pack(pady=5)
 
-    
-
-    # --- Estilos ttk Personalizados ---
     style = ttk.Style(ventana_agregar)
     style.theme_use('clam')
+    style.configure("CustomLabel.TLabel", foreground="#ffffff", background="#000080", font=("Segoe UI", 10, "bold"))
+    style.configure("CustomEntry.TEntry", foreground="#000000", background="#ffffff", insertcolor="#000000", font=("Segoe UI", 10, "bold"))
+    style.configure("TCombobox", foreground="#000000", background="#ffffff", fieldbackground="#ffffff", insertcolor="#000000", font=("Segoe UI", 10))
+    style.configure("CustomButton.TButton", foreground="#000000", background="#d9d9d9", font=("Segoe UI", 10, "bold"), padding=8, relief="raised", anchor="center")
+    style.map("CustomButton.TButton", background=[('active', '#c1c1c1')], foreground=[('active', '#000000')])
 
-    style.configure("CustomLabel.TLabel",  # Etiquetas blancas y gruesas con fondo azul
-                    foreground="#ffffff",
-                    background="#000080",
-                    font=("Segoe UI", 10, "bold"))
-
-    style.configure("CustomEntry.TEntry",  # Campos de entrada blancos con texto negro grueso
-                    foreground="#000000",
-                    background="#ffffff",
-                    insertcolor="#000000",
-                    font=("Segoe UI", 10, "bold"))
-
-    style.configure("TCombobox",  # Combobox blanco con texto negro grueso
-                    foreground="#000000",
-                    background="#ffffff",
-                    fieldbackground="#ffffff",
-                    insertcolor="#000000",
-                    font=("Segoe UI", 10, "bold"))
-
-    style.configure("CustomButton.TButton",  # Estilo para los botones (manteniendo el color)
-                    foreground="#000000",
-                    background="#d9d9d9",
-                    font=("Segoe UI", 10, "bold"),
-                    padding=8,
-                    relief="raised",
-                    anchor="center")
-    style.map("CustomButton.TButton",
-              background=[('active', '#c1c1c1')],
-              foreground=[('active', '#000000')])
-
-    # --- Etiquetas y Campos de Entrada ---
     ttk.Label(ventana_agregar, text="Nombre del producto:", style="CustomLabel.TLabel").grid(row=0, column=0, sticky="w", padx=10, pady=10)
     entry_producto = ttk.Entry(ventana_agregar, style="CustomEntry.TEntry")
     entry_producto.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
     ttk.Label(ventana_agregar, text="Categoría del producto:", style="CustomLabel.TLabel").grid(row=1, column=0, sticky="w", padx=10, pady=10)
-    combo_categoria = ttk.Combobox(ventana_agregar, values=list(set(producto["categoria"] for producto in inventario.values())) + ["Añadir nueva"], style="TCombobox")
+    combo_categoria = ttk.Combobox(ventana_agregar, textvariable=categoria_var, values=categorias_list, style="TCombobox")
     combo_categoria.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
+    combo_categoria.bind("<<ComboboxSelected>>", mostrar_opciones_categoria)
 
     ttk.Label(ventana_agregar, text="Destino de entrada:", style="CustomLabel.TLabel").grid(row=2, column=0, sticky="w", padx=10, pady=10)
     entry_destino_entrada = ttk.Entry(ventana_agregar, style="CustomEntry.TEntry")
@@ -429,8 +485,9 @@ def agregar_producto():
     entry_entrada.grid(row=3, column=1, padx=10, pady=10, sticky="ew")
 
     ttk.Label(ventana_agregar, text="Unidad de medida:", style="CustomLabel.TLabel").grid(row=4, column=0, sticky="w", padx=10, pady=10)
-    combo_unidad_medida = ttk.Combobox(ventana_agregar, values=list(set(producto["unidad_medida"] for producto in inventario.values())) + ["Añadir nueva"], style="TCombobox")
+    combo_unidad_medida = ttk.Combobox(ventana_agregar, textvariable=unidad_medida_var, values=unidades_list, style="TCombobox")
     combo_unidad_medida.grid(row=4, column=1, padx=10, pady=10, sticky="ew")
+    combo_unidad_medida.bind("<<ComboboxSelected>>", mostrar_opciones_unidad)
 
     ttk.Label(ventana_agregar, text="Fecha de entrada (YYYY-MM-DD):", style="CustomLabel.TLabel").grid(row=5, column=0, sticky="w", padx=10, pady=10)
     entry_fecha_entrada = ttk.Entry(ventana_agregar, style="CustomEntry.TEntry")
@@ -439,26 +496,50 @@ def agregar_producto():
     ttk.Button(ventana_agregar, text="Calendario", command=abrir_calendario, style="CustomButton.TButton").grid(row=5, column=2, padx=10, pady=10)
     ttk.Button(ventana_agregar, text="Agregar", command=agregar, style="CustomButton.TButton").grid(row=6, column=0, columnspan=3, pady=15, padx=10, sticky="ew")
 
-    # --- Configurar la expansión de la columna ---
     ventana_agregar.grid_columnconfigure(1, weight=1)
 
+
 def realizar_salida():
-    """Realiza una salida en espera de productos del inventario."""
-    
+    """Realiza una salida en espera de productos del inventario, permitiendo búsqueda por nombre o código."""
+
+    def obtener_productos_con_codigo():
+        """Crea una lista de strings con el formato 'Nombre (Código)' para el Combobox."""
+        productos_con_codigo = []
+        for codigo, detalles in inventario.items():  # Iteramos por código (clave) y detalles
+            nombre = detalles.get("nombre", "SIN NOMBRE")
+            productos_con_codigo.append(f"{nombre} ({codigo})")
+        return sorted(productos_con_codigo)
+
+    def obtener_nombre_desde_seleccion(seleccion):
+        """Extrae el nombre del producto de la string seleccionada en el Combobox."""
+        if " (" in seleccion:
+            return seleccion.split(" (")[0]
+        return seleccion
+
+    def obtener_codigo_desde_seleccion(seleccion):
+        """Extrae el código del producto de la string seleccionada en el Combobox."""
+        if " (" in seleccion and seleccion.endswith(")"):
+            return seleccion.split(" (")[1][:-1]
+        return None
+
     def salida_espera():
         """Agrega una salida a la lista de espera."""
         departamento = departamento_var.get()
-        producto = combo_producto.get()
+        seleccion_producto = combo_producto.get()
         cantidad = int(entry_cantidad.get())
+        producto_nombre = obtener_nombre_desde_seleccion(seleccion_producto)
+        codigo_producto = obtener_codigo_desde_seleccion(seleccion_producto)
 
         salidas_espera.append({
-            "producto": producto,
+            "producto": producto_nombre,
             "cantidad": cantidad,
-            "departamento": departamento
+            "departamento": departamento,
+            "codigo_producto": codigo_producto
         })
 
-        messagebox.showinfo("Salida en Espera", f"{cantidad} unidades de '{producto}' solicitadas para {departamento}. Agregado a la lista de espera.")
+        messagebox.showinfo("Salida en Espera", f"{cantidad} unidades de '{producto_nombre}' (Código: {codigo_producto if codigo_producto else 'N/A'}) solicitadas para {departamento}. Agregado a la lista de espera.")
         ventana_salida_espera.destroy()
+        guardar_datos() # Asegúrate de guardar los datos actualizados
 
     ventana_salida_espera = tk.Toplevel(ventana)
     ventana_salida_espera.title("Salida en Espera")
@@ -467,50 +548,26 @@ def realizar_salida():
     # --- Estilos ttk Personalizados ---
     style = ttk.Style(ventana_salida_espera)
     style.theme_use('clam')
+    style.configure("CustomLabel.TLabel", foreground="#ffffff", background="#000080", font=("Segoe UI", 10, "bold"))
+    style.configure("TCombobox", foreground="#000000", background="#ffffff", fieldbackground="#ffffff", insertcolor="#000000", font=("Segoe UI", 10))
+    style.configure("CustomEntry.TEntry", foreground="#000000", background="#ffffff", insertcolor="#000000", font=("Segoe UI", 10))
+    style.configure("CustomButton.TButton", foreground="#000000", background="#d9d9d9", font=("Segoe UI", 10, "bold"), padding=8, relief="raised", anchor="center")
+    style.map("CustomButton.TButton", background=[('active', '#c1c1c1')], foreground=[('active', '#000000')])
 
-    style.configure("CustomLabel.TLabel",
-                    foreground="#ffffff",
-                    background="#000080",
-                    font=("Segoe UI", 10, "bold"))
+    # Obtener la lista de productos con su código para el Combobox
+    productos_con_codigo = obtener_productos_con_codigo()
 
-    style.configure("TCombobox",
-                    foreground="#000000",
-                    background="#ffffff",
-                    fieldbackground="#ffffff",
-                    insertcolor="#000000",
-                    font=("Segoe UI", 10))
-
-    style.configure("CustomEntry.TEntry",
-                    foreground="#000000",
-                    background="#ffffff",
-                    insertcolor="#000000",
-                    font=("Segoe UI", 10))
-
-    style.configure("CustomButton.TButton",
-                    foreground="#000000",
-                    background="#d9d9d9",
-                    font=("Segoe UI", 10, "bold"),
-                    padding=8,
-                    relief="raised",
-                    anchor="center")
-    style.map("CustomButton.TButton",
-              background=[('active', '#c1c1c1')],
-              foreground=[('active', '#000000')])
-
-    # Obtener la lista de productos del inventario
-    productos = sorted(list(inventario.keys()))
-
-    ttk.Label(ventana_salida_espera, text="Nombre del producto:", style="CustomLabel.TLabel").grid(row=0, column=0, sticky="w", padx=10, pady=10)
-    combo_producto = ttk.Combobox(ventana_salida_espera, values=productos, style="TCombobox")
+    ttk.Label(ventana_salida_espera, text="Nombre del producto (Código):", style="CustomLabel.TLabel").grid(row=0, column=0, sticky="w", padx=10, pady=10)
+    combo_producto = ttk.Combobox(ventana_salida_espera, values=productos_con_codigo, style="TCombobox")
     combo_producto.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
 
-    # Función para filtrar la lista de productos a medida que el usuario escribe
+    # Función para filtrar la lista de productos por nombre o código
     def filtrar_productos(event):
         valor_escrito = combo_producto.get().lower()
         productos_filtrados = [
-            producto
-            for producto in productos
-            if any(palabra.startswith(valor_escrito) for palabra in producto.lower().split())
+            pc
+            for pc in productos_con_codigo
+            if valor_escrito in pc.lower()
         ]
         combo_producto["values"] = productos_filtrados
 
@@ -539,7 +596,7 @@ def realizar_salida():
 
 def mostrar_inventario():
     """Muestra el inventario con menú desplegable de categorías y búsqueda por abreviatura, y totales."""
-   
+
     ventana_inventario = tk.Toplevel(ventana)
     ventana_inventario.title("Inventario")
     ventana_inventario.geometry("1200x600")
@@ -602,7 +659,7 @@ def mostrar_inventario():
     entry_busqueda = ttk.Entry(frame_busqueda, style="CustomEntry.TEntry")
     entry_busqueda.pack(side=tk.LEFT)
 
-    # Función para buscar productos por abreviatura
+    # Función para buscar productos por nombre (ahora la clave es el código)
     def buscar_por_abreviatura(event=None):  # Agregamos el argumento event
         termino_busqueda = entry_busqueda.get().lower()
         mostrar_tabla(categoria_seleccionada_mostrar.get(), termino_busqueda)
@@ -630,10 +687,11 @@ def mostrar_inventario():
     frame_tabla.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     # Treeview (tabla)
-    tabla_productos = ttk.Treeview(frame_tabla, columns=("Categoría", "Producto", "Destino Entrada", "Destino Salida", "Entrada", "Salida", "Stock", "Unidad Medida", "Fecha Entrada", "Fecha Salida"), show="headings", style="Grid.Treeview")
+    tabla_productos = ttk.Treeview(frame_tabla, columns=("Código", "Categoría", "Producto", "Destino Entrada", "Destino Salida", "Entrada", "Salida", "Stock", "Unidad Medida", "Fecha Entrada", "Fecha Salida"), show="headings", style="Grid.Treeview")
     tabla_productos.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-    # Definir encabezados de columna
+    # Definir encabezados de columna (añadimos "Código")
+    tabla_productos.heading("Código", text="Código", anchor=tk.W)
     tabla_productos.heading("Categoría", text="Categoría", anchor=tk.W)
     tabla_productos.heading("Producto", text="Producto", anchor=tk.W)
     tabla_productos.heading("Destino Entrada", text="Destino Entrada", anchor=tk.W)
@@ -645,7 +703,8 @@ def mostrar_inventario():
     tabla_productos.heading("Fecha Entrada", text="Fecha Entrada", anchor=tk.W)
     tabla_productos.heading("Fecha Salida", text="Fecha Salida", anchor=tk.W)
 
-    # Configurar ancho de columnas
+    # Configurar ancho de columnas (añadimos ancho para "Código")
+    tabla_productos.column("Código", width=150)
     tabla_productos.column("Categoría", width=120)
     tabla_productos.column("Producto", width=150)
     tabla_productos.column("Destino Entrada", width=150)
@@ -673,7 +732,7 @@ def mostrar_inventario():
     def mostrar_tabla(categoria="Todas", termino_busqueda=""):
         tabla_productos.delete(*tabla_productos.get_children())
         productos_filtrados = obtener_productos_filtrados(categoria, termino_busqueda)
-        for producto, datos in productos_filtrados:
+        for codigo, datos in productos_filtrados:  # Iteramos por código y datos
             destino_salida = datos["destino_salida"]
             numero_requisicion = datos.get("numero_requisicion", "")  # Leer de la clave numero_requisicion
 
@@ -681,8 +740,9 @@ def mostrar_inventario():
                 destino_salida += f" (Req. {numero_requisicion})"  # Agregar el número de requisición al destino de salida
 
             tabla_productos.insert("", tk.END, values=(
+                codigo,  # Mostramos el código
                 datos["categoria"],
-                producto,
+                datos["nombre"],  # Accedemos al nombre con la clave "nombre"
                 datos["destino_entrada"],
                 destino_salida,  # Mostrar el destino de salida con el número de requisición
                 datos["entrada"],
@@ -694,18 +754,18 @@ def mostrar_inventario():
             ))
         mostrar_totales(categoria)
 
-    # Función para obtener los productos filtrados por categoría y término de búsqueda
+    # Función para obtener los productos filtrados por categoría y término de búsqueda (ahora busca en el nombre)
     def obtener_productos_filtrados(categoria, termino_busqueda):
         resultados = []
-        for producto, datos in inventario.items():
+        for codigo, datos in inventario.items():  # Iteramos por código y datos
             incluir = True
             if categoria != "Todas" and datos["categoria"] != categoria:
                 incluir = False
-            if termino_busqueda and not producto.lower().startswith(termino_busqueda):
+            if termino_busqueda and not datos["nombre"].lower().startswith(termino_busqueda):  # Buscamos en el nombre
                 incluir = False
             if incluir:
-                resultados.append((producto, datos))
-        return sorted(resultados, key=lambda x: (x[1]["categoria"], x[0]))
+                resultados.append((codigo, datos))  # Devolvemos el código y los datos
+        return sorted(resultados, key=lambda x: (x[1]["categoria"], x[1]["nombre"]))
 
     # Función para mostrar los totales
     def mostrar_totales(categoria):
@@ -721,8 +781,12 @@ def mostrar_inventario():
     # Mostrar todos los productos al inicio
     mostrar_tabla()
 
-    def realizar_entrada_contextual(producto):
-        """Realiza una entrada de productos desde el menú contextual con botón de calendario."""
+    def realizar_entrada_contextual(codigo_producto_seleccionado, nombre_producto):
+        """Realiza una entrada de productos desde el menú contextual usando el código del producto."""
+        if not codigo_producto_seleccionado:
+            messagebox.showerror("Error", "No se proporcionó el código del producto.")
+            return
+
         def confirmar_entrada():
             cantidad = entry_cantidad.get()
             fecha = entry_fecha.get()
@@ -731,24 +795,26 @@ def mostrar_inventario():
                 return
             cantidad = int(cantidad)
 
-            if producto in inventario:
-                inventario[producto]["stock"] += cantidad
-                inventario[producto]["entrada"] += cantidad
-                inventario[producto]["fecha_entrada"] = fecha
+            if codigo_producto_seleccionado in inventario:
+                inventario[codigo_producto_seleccionado]["stock"] += cantidad
+                inventario[codigo_producto_seleccionado]["entrada"] += cantidad
+                inventario[codigo_producto_seleccionado]["fecha_entrada"] = fecha
                 entradas_departamentos.append({
-                    "producto": producto,
+                    "producto": nombre_producto,
                     "cantidad": cantidad,
                     "fecha": fecha,
-                    "destino": inventario[producto]["destino_entrada"]
+                    "destino": inventario[codigo_producto_seleccionado]["destino_entrada"],
+                    "codigo_producto": codigo_producto_seleccionado
                 })
                 mostrar_tabla(categoria_seleccionada_mostrar.get())
-                messagebox.showinfo("Entrada Realizada", f"{cantidad} unidades de {producto} entraron al inventario.")
+                messagebox.showinfo("Entrada Realizada", f"{cantidad} unidades de {nombre_producto} (Código: {codigo_producto_seleccionado}) entraron al inventario.")
                 ventana_entrada.destroy()
+                guardar_datos() # Guardar los cambios
             else:
                 messagebox.showerror("Error", "El producto no existe en el inventario.")
 
         ventana_entrada = tk.Toplevel(ventana_inventario)
-        ventana_entrada.title(f"Realizar Entrada - {producto}")
+        ventana_entrada.title(f"Realizar Entrada - {nombre_producto} (Código: {codigo_producto_seleccionado})")
         ventana_entrada.configure(bg="#A9A9A9")
 
         ttk.Label(ventana_entrada, text="Cantidad:", style="CustomLabel.TLabel").grid(row=0, column=0, padx=10, pady=10)
@@ -763,8 +829,11 @@ def mostrar_inventario():
         ttk.Button(ventana_entrada, text="Confirmar Entrada", command=confirmar_entrada, style="CustomButton.TButton").grid(row=2, column=0, columnspan=3, pady=15, padx=10, sticky="ew")
         ventana_entrada.grid_columnconfigure(1, weight=1)
 
-    def realizar_salida_contextual(producto):
-        """Realiza una salida de productos desde el menú contextual con botón de calendario."""
+    def realizar_salida_contextual(codigo_producto_seleccionado, nombre_producto):
+        """Realiza una salida de productos desde el menú contextual usando el código del producto."""
+        if not codigo_producto_seleccionado:
+            messagebox.showerror("Error", "No se proporcionó el código del producto.")
+            return
 
         def confirmar_salida():
             departamento = departamento_var.get()
@@ -781,31 +850,33 @@ def mostrar_inventario():
                 messagebox.showerror("Error", "Por favor, complete todos los campos.")
                 return
 
-            if producto in inventario and inventario[producto]["stock"] >= cantidad:
-                inventario[producto]["stock"] -= cantidad
-                inventario[producto]["salida"] += cantidad
-                inventario[producto]["fecha_salida"] = fecha
-                inventario[producto]["destino_salida"] = departamento
-                inventario[producto]["numero_requisicion"] = numero_requisicion
+            if codigo_producto_seleccionado in inventario and inventario[codigo_producto_seleccionado]["stock"] >= cantidad:
+                inventario[codigo_producto_seleccionado]["stock"] -= cantidad
+                inventario[codigo_producto_seleccionado]["salida"] += cantidad
+                inventario[codigo_producto_seleccionado]["fecha_salida"] = fecha
+                inventario[codigo_producto_seleccionado]["destino_salida"] = departamento
+                inventario[codigo_producto_seleccionado]["numero_requisicion"] = numero_requisicion
                 salidas_departamentos.append({
-                    "producto": producto,
+                    "producto": nombre_producto,
                     "cantidad": cantidad,
                     "fecha": fecha,
                     "destino": departamento,
-                    "requisicion": numero_requisicion
+                    "requisicion": numero_requisicion,
+                    "codigo_producto": codigo_producto_seleccionado
                 })
                 mostrar_tabla(categoria_seleccionada_mostrar.get())
-                messagebox.showinfo("Salida Realizada", f"{cantidad} unidades de {producto} salieron para {departamento}.")
+                messagebox.showinfo("Salida Realizada", f"{cantidad} unidades de {nombre_producto} (Código: {codigo_producto_seleccionado}) salieron para {departamento}.")
                 ventana_salida.destroy()
+                guardar_datos() # Guardar los cambios
             else:
                 messagebox.showerror("Error", "No hay suficiente stock para realizar la salida.")
 
         ventana_salida = tk.Toplevel(ventana_inventario)
-        ventana_salida.title(f"Realizar Salida - {producto}")
+        ventana_salida.title(f"Realizar Salida - {nombre_producto} (Código: {codigo_producto_seleccionado})")
         ventana_salida.configure(bg="#A9A9A9")
 
         ttk.Label(ventana_salida, text="Departamento:", style="CustomLabel.TLabel").grid(row=0, column=0, padx=10, pady=10)
-        departamentos = ["OTIC", "Oficina de Gestion Administrativa", "Oficina Contabilidad","Oficina Compras","Oficina de Bienes","Direccion de Servicios Generales y Transporte","Oficina de Seguimiento y Proyectos Estructurales","Direccion General de Planificacion Estrategica","Planoteca","Biblioteca","Direccion General de Seguimiento de Proyectos","Gestion Participativa Parque la isla","Oficina de Atencion ciudadana","Oficina de gestion Humana","Presidencia","Secretaria General","Consultoria Juridica","Oficina de Planificacion y Presupuesto","Auditoria","Direccion de informacion y Comunicacion","Direccion General de Formacion"]  # Reemplaza con tus departamentos
+        departamentos = ["OTIC", "Oficina de Gestion Administrativa", "Oficina Contabilidad","Oficina Compras","Oficina de Bienes","Direccion de Servicios Generales y Transporte","Oficina de Seguimiento y Proyectos Estructurales","Direccion General de Planificacion Estrategica","Planoteca","Biblioteca","Direccion General de Seguimiento de Proyectos","Gestion Participativa Parque la isla","Oficina de Atencion ciudadana","Oficina de gestion Humana","Presidencia","Secretaria General","Consultoria Juridica","Oficina de Planificacion y Presupuesto","Auditoria","Direccion de informacion y Comunicacion","Direccion General de Formacion"]
         departamentos.sort()
         departamento_var = tk.StringVar(ventana_salida)
         departamento_var.set(departamentos[0] if departamentos else "")
@@ -828,25 +899,30 @@ def mostrar_inventario():
         ttk.Button(ventana_salida, text="Confirmar Salida", command=confirmar_salida, style="CustomButton.TButton").grid(row=4, column=0, columnspan=3, pady=15, padx=10, sticky="ew")
         ventana_salida.grid_columnconfigure(1, weight=1)
 
-    def eliminar_producto_contextual(producto):
-        """Elimina un producto del inventario desde el menú contextual."""
-        if messagebox.askyesno("Eliminar Producto", f"¿Seguro que desea eliminar {producto} del inventario?"):
-            if producto in inventario:
-                del inventario[producto]
-                mostrar_tabla(categoria_seleccionada_mostrar.get())
-                messagebox.showinfo("Producto Eliminado", f"Producto '{producto}' eliminado del inventario.")
-            else:
-                messagebox.showerror("Error", "El producto no existe en el inventario.")
+    def eliminar_producto_contextual(codigo_producto_seleccionado, nombre_producto):
+        """Elimina un producto del inventario desde el menú contextual usando el código."""
+        if codigo_producto_seleccionado:
+            if messagebox.askyesno("Eliminar Producto", f"¿Seguro que desea eliminar '{nombre_producto}' (Código: {codigo_producto_seleccionado}) del inventario?"):
+                if codigo_producto_seleccionado in inventario:
+                    del inventario[codigo_producto_seleccionado]
+                    mostrar_tabla(categoria_seleccionada_mostrar.get())
+                    messagebox.showinfo("Producto Eliminado", f"Producto '{nombre_producto}' (Código: {codigo_producto_seleccionado}) eliminado del inventario.")
+                    guardar_datos() # Guardar los cambios
+                else:
+                    messagebox.showerror("Error", f"El producto con código '{codigo_producto_seleccionado}' no existe en el inventario.")
+        else:
+            messagebox.showerror("Error", "No se proporcionó el código del producto para eliminar.")
 
     # Función para manejar el clic derecho en un producto
     def menu_contextual(event):
         item = tabla_productos.identify_row(event.y)
         if item:
-            producto_nombre = tabla_productos.item(item, "values")[1]  # Obtener el nombre del producto
+            codigo_producto = tabla_productos.item(item, "values")[0]  # Obtener el código del producto
+            nombre_producto = inventario.get(codigo_producto, {}).get("nombre", "N/A")
             menu = tk.Menu(ventana_inventario, tearoff=0)
-            menu.add_command(label="Realizar Entrada", command=lambda: realizar_entrada_contextual(producto_nombre))
-            menu.add_command(label="Realizar Salida", command=lambda: realizar_salida_contextual(producto_nombre))
-            menu.add_command(label="Eliminar Producto", command=lambda: eliminar_producto_contextual(producto_nombre))
+            menu.add_command(label="Realizar Entrada", command=lambda c=codigo_producto, n=nombre_producto: realizar_entrada_contextual(c, n))
+            menu.add_command(label="Realizar Salida", command=lambda c=codigo_producto, n=nombre_producto: realizar_salida_contextual(c, n))
+            menu.add_command(label="Eliminar Producto", command=lambda c=codigo_producto, n=nombre_producto: eliminar_producto_contextual(c, n))
             menu.post(event.x_root, event.y_root)
 
     # Enlazar el evento de clic derecho al Treeview
@@ -868,121 +944,6 @@ def calcular_consumo_departamento():
 
 def mostrar_consumo_periodos(consumo_diario, consumo_semanal, consumo_mensual):
     """Muestra el consumo para los tres períodos en una tabla."""
-    ventana_consumo = tk.Toplevel(ventana)  # Usar la variable global 'ventana'
-    ventana_consumo.title("Consumo por Período")
-    ventana_consumo.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
-
-    # --- Estilos ttk Personalizados ---
-    style = ttk.Style(ventana_consumo)
-    style.theme_use('clam')
-
-    style.configure("CustomLabel.TLabel",
-                    foreground="#ffffff",
-                    background="#A9A9A9",
-                    font=("Segoe UI", 10, "bold"))
-
-    style.configure("Grid.Treeview",
-                    foreground="#000000",
-                    background="#ffffff",
-                    font=("Segoe UI", 10))
-    style.configure("Grid.Treeview.Heading",
-                    foreground="#000000",
-                    background="#d9d9d9",
-                    font=("Segoe UI", 10, "bold"))
-    style.map("Grid.Treeview",
-              background=[('selected', '#bddfff')],
-              foreground=[('selected', '#000000')])
-
-    # Treeview (tabla) para mostrar el consumo
-    tabla_consumo = ttk.Treeview(ventana_consumo, columns=("Departamento", "Producto", "Diario", "Semanal", "Mensual", "Unidad Medida", "Porcentaje"), show="headings", style="Grid.Treeview")
-    tabla_consumo.pack(fill=tk.BOTH, expand=True)
-
-    # Definir encabezados de columna
-    tabla_consumo.heading("Departamento", text="Departamento", anchor=tk.W)
-    tabla_consumo.heading("Producto", text="Producto", anchor=tk.W)
-    tabla_consumo.heading("Diario", text="Diario", anchor=tk.W)
-    tabla_consumo.heading("Semanal", text="Semanal", anchor=tk.W)
-    tabla_consumo.heading("Mensual", text="Mensual", anchor=tk.W)
-    tabla_consumo.heading("Unidad Medida", text="Unidad Medida", anchor=tk.W)
-    tabla_consumo.heading("Porcentaje", text="Porcentaje", anchor=tk.W)
-
-    # Configurar ancho de columnas
-    tabla_consumo.column("Departamento", width=150)
-    tabla_consumo.column("Producto", width=150)
-    tabla_consumo.column("Diario", width=80)
-    tabla_consumo.column("Semanal", width=80)
-    tabla_consumo.column("Mensual", width=80)
-    tabla_consumo.column("Unidad Medida", width=100)
-    tabla_consumo.column("Porcentaje", width=100)
-
-    # Insertar datos en la tabla
-    departamentos = set()
-    productos = set()
-    for consumo in [consumo_diario, consumo_semanal, consumo_mensual]:
-        departamentos.update(consumo[0].keys())
-        for productos_departamento in consumo[0].values():
-            productos.update(productos_departamento.keys())
-
-    for departamento in departamentos:
-        for producto in productos:
-            diario = consumo_diario[0].get(departamento, {}).get(producto, 0)
-            semanal = consumo_semanal[0].get(departamento, {}).get(producto, 0)
-            mensual = consumo_mensual[0].get(departamento, {}).get(producto, 0)
-            unidad_medida = inventario[producto]["unidad_medida"]
-
-            # Calcular el consumo total para el producto
-            consumo_total = diario + semanal + mensual
-
-            # Calcular el porcentaje de consumo
-            porcentaje = (consumo_total / sum([consumo_diario[1], consumo_semanal[1], consumo_mensual[1]])) * 100 if sum([consumo_diario[1], consumo_semanal[1], consumo_mensual[1]]) > 0 else 0
-
-            tabla_consumo.insert("", tk.END, values=(departamento, producto, diario, semanal, mensual, unidad_medida, f"{porcentaje:.2f}%"))
-
-
-def calcular_consumo_periodo(periodo):
-    """Calcula el consumo para un período específico."""
-    consumo_departamentos = {}
-    total_consumo = 0
-    fecha_actual = datetime.date.today()
-    fecha_inicio = fecha_actual - periodo
-
-    for salida in salidas_departamentos:  # Iterar sobre la lista de salidas
-        fecha_salida = salida["fecha"]
-
-        # Convertir a datetime.date si es una cadena
-        if isinstance(fecha_salida, str):
-            try:
-                fecha_salida = datetime.date.fromisoformat(fecha_salida)
-            except ValueError:
-                # Manejar fechas inválidas (puedes omitir o registrar el error)
-                print(f"Fecha inválida: {salida['fecha']}")
-                continue  # Saltar a la siguiente salida
-
-        if fecha_inicio <= fecha_salida <= fecha_actual:
-            departamento = salida["destino"]
-            producto = salida["producto"]
-            cantidad = salida["cantidad"]
-
-            try:
-                cantidad = int(cantidad)
-            except ValueError:
-                print(f"Cantidad inválida: {cantidad} para el producto {producto} en el departamento {departamento}")
-                continue  # Saltar a la siguiente salida
-
-
-            if departamento not in consumo_departamentos:
-                consumo_departamentos[departamento] = {}
-
-            if producto not in consumo_departamentos[departamento]:
-                consumo_departamentos[departamento][producto] = 0
-
-            consumo_departamentos[departamento][producto] += cantidad
-            total_consumo += cantidad
-
-    return consumo_departamentos, total_consumo
-
-def mostrar_consumo_periodos(consumo_diario, consumo_semanal, consumo_mensual):
-    """Muestra el consumo para los tres períodos en una tabla y prepara los datos para guardar."""
     ventana_consumo = tk.Toplevel(ventana)
     ventana_consumo.title("Consumo por Período")
     ventana_consumo.configure(bg="#A9A9A9")
@@ -996,11 +957,12 @@ def mostrar_consumo_periodos(consumo_diario, consumo_semanal, consumo_mensual):
     style.map("Grid.Treeview", background=[('selected', '#bddfff')], foreground=[('selected', '#000000')])
 
     # Treeview (tabla) para mostrar el consumo
-    tabla_consumo = ttk.Treeview(ventana_consumo, columns=("Departamento", "Producto", "Diario", "Semanal", "Mensual", "Unidad Medida", "Porcentaje"), show="headings", style="Grid.Treeview")
+    tabla_consumo = ttk.Treeview(ventana_consumo, columns=("Departamento", "Código", "Producto", "Diario", "Semanal", "Mensual", "Unidad Medida", "Porcentaje"), show="headings", style="Grid.Treeview")
     tabla_consumo.pack(fill=tk.BOTH, expand=True)
 
     # Definir encabezados de columna
     tabla_consumo.heading("Departamento", text="Departamento", anchor=tk.W)
+    tabla_consumo.heading("Código", text="Código", anchor=tk.W)
     tabla_consumo.heading("Producto", text="Producto", anchor=tk.W)
     tabla_consumo.heading("Diario", text="Diario", anchor=tk.W)
     tabla_consumo.heading("Semanal", text="Semanal", anchor=tk.W)
@@ -1010,6 +972,7 @@ def mostrar_consumo_periodos(consumo_diario, consumo_semanal, consumo_mensual):
 
     # Configurar ancho de columnas
     tabla_consumo.column("Departamento", width=150)
+    tabla_consumo.column("Código", width=100)
     tabla_consumo.column("Producto", width=150)
     tabla_consumo.column("Diario", width=80)
     tabla_consumo.column("Semanal", width=80)
@@ -1020,35 +983,42 @@ def mostrar_consumo_periodos(consumo_diario, consumo_semanal, consumo_mensual):
     # Lista para almacenar los datos de consumo para guardar
     datos_consumo_guardar = []
 
-    # Insertar datos en la tabla y almacenar para guardar
+    # Obtener todos los departamentos y códigos de productos únicos de los datos de consumo
     departamentos = set()
-    productos = set()
-    for consumo in [consumo_diario, consumo_semanal, consumo_mensual]:
-        departamentos.update(consumo[0].keys())
-        for productos_departamento in consumo[0].values():
-            productos.update(productos_departamento.keys())
+    codigos_consumidos = set()
+    consumo_total_general = 0
+    for periodo_consumo, total_periodo in [consumo_diario, consumo_semanal, consumo_mensual]:
+        if periodo_consumo:
+            departamentos.update(periodo_consumo.keys())
+            for productos_departamento in periodo_consumo.values():
+                codigos_consumidos.update(productos_departamento.keys())
+                consumo_total_general += total_periodo
 
-    for departamento in departamentos:
-        for producto in productos:
-            diario = consumo_diario[0].get(departamento, {}).get(producto, 0)
-            semanal = consumo_semanal[0].get(departamento, {}).get(producto, 0)
-            mensual = consumo_mensual[0].get(departamento, {}).get(producto, 0)
-            unidad_medida = inventario.get(producto, {}).get("unidad_medida", "N/A")
+    # Insertar datos en la tabla
+    for departamento in sorted(list(departamentos)):
+        for codigo in sorted(list(codigos_consumidos)):
+            diario = consumo_diario[0].get(departamento, {}).get(codigo, 0)
+            semanal = consumo_semanal[0].get(departamento, {}).get(codigo, 0)
+            mensual = consumo_mensual[0].get(departamento, {}).get(codigo, 0)
+
+            detalles_producto = inventario.get(codigo, {})
+            nombre_producto = detalles_producto.get("nombre", "N/A")
+            unidad_medida = detalles_producto.get("unidad_medida", "N/A")
 
             # Calcular el consumo total para el producto
-            consumo_total = diario + semanal + mensual
+            total_consumo_producto = diario + semanal + mensual
 
-            # Calcular el porcentaje de consumo
-            total_consumo_general = sum([consumo_diario[1], consumo_semanal[1], consumo_mensual[1]])
-            porcentaje = (consumo_total / total_consumo_general) * 100 if total_consumo_general > 0 else 0
+            # Calcular el porcentaje de consumo del producto respecto al total general
+            porcentaje = (total_consumo_producto / consumo_total_general) * 100 if consumo_total_general > 0 else 0
 
-            values = (departamento, producto, diario, semanal, mensual, unidad_medida, f"{porcentaje:.2f}%")
+            values = (departamento, codigo, nombre_producto, diario, semanal, mensual, unidad_medida, f"{porcentaje:.2f}%")
             tabla_consumo.insert("", tk.END, values=values)
 
             # Almacenar los datos para guardar
             datos_consumo_guardar.append({
                 "departamento": departamento,
-                "producto": producto,
+                "codigo_producto": codigo,
+                "producto": nombre_producto,
                 "diario": diario,
                 "semanal": semanal,
                 "mensual": mensual,
@@ -1056,12 +1026,53 @@ def mostrar_consumo_periodos(consumo_diario, consumo_semanal, consumo_mensual):
                 "porcentaje": f"{porcentaje:.2f}%"
             })
 
-    # Guardar los datos de consumo usando la función guardar_datos
-    global datos_consumo_para_guardar
-    datos_consumo_para_guardar = datos_consumo_guardar
+    # Guardar los datos de consumo
+    global datos_reportes_para_guardar
+    datos_reportes_para_guardar["Consumo"] = datos_consumo_guardar
 
-# Variable global para almacenar los datos de consumo
-datos_consumo_para_guardar = []
+
+def calcular_consumo_periodo(periodo):
+    """Calcula el consumo para un período específico, utilizando el código del producto como clave."""
+    consumo_departamentos = {}
+    total_consumo = 0
+    fecha_actual = datetime.date.today()
+    fecha_inicio = fecha_actual - periodo
+
+    for salida in salidas_departamentos:  # Iterar sobre la lista de salidas
+        fecha_salida = salida.get("fecha")
+        departamento = salida.get("destino")
+        codigo_producto = salida.get("codigo_producto") # Obtenemos el código
+        cantidad = salida.get("cantidad")
+
+        if not all([fecha_salida, departamento, codigo_producto, cantidad]):
+            continue  # Saltar si faltan datos esenciales
+
+        # Convertir a datetime.date si es una cadena
+        if isinstance(fecha_salida, str):
+            try:
+                fecha_salida = datetime.date.fromisoformat(fecha_salida)
+            except ValueError:
+                print(f"Fecha inválida: {salida['fecha']}")
+                continue  # Saltar a la siguiente salida
+
+        if fecha_inicio <= fecha_salida <= fecha_actual:
+            try:
+                cantidad = int(cantidad)
+            except ValueError:
+                print(f"Cantidad inválida: {cantidad} para el producto con código {codigo_producto} en el departamento {departamento}")
+                continue  # Saltar a la siguiente salida
+
+            if departamento not in consumo_departamentos:
+                consumo_departamentos[departamento] = {}
+
+            if codigo_producto not in consumo_departamentos[departamento]: # Usamos el código como clave
+                consumo_departamentos[departamento][codigo_producto] = 0
+
+            consumo_departamentos[departamento][codigo_producto] += cantidad
+            total_consumo += cantidad
+
+    return consumo_departamentos, total_consumo
+
 
     
 
@@ -1105,24 +1116,26 @@ def generar_reporte_bajo_stock():
 
     umbral_stock_minimo = 1
     productos_bajo_stock = []
-    for producto, datos in inventario.items():
+    for codigo, datos in inventario.items():
         if datos["stock"] < umbral_stock_minimo:
-            productos_bajo_stock.append((producto, datos))
+            productos_bajo_stock.append((codigo, datos))
 
     datos_reporte = [] # Lista para almacenar los datos del reporte
     if productos_bajo_stock:
-        tabla_bajo_stock = ttk.Treeview(ventana_reporte, columns=("Producto", "Stock Actual", "Unidad Medida"), show="headings", style="Grid.Treeview")
+        tabla_bajo_stock = ttk.Treeview(ventana_reporte, columns=("Código", "Producto", "Stock Actual", "Unidad Medida"), show="headings", style="Grid.Treeview")
         tabla_bajo_stock.pack(fill=tk.BOTH, expand=True)
+        tabla_bajo_stock.heading("Código", text="Código", anchor=tk.W)
         tabla_bajo_stock.heading("Producto", text="Producto", anchor=tk.W)
         tabla_bajo_stock.heading("Stock Actual", text="Stock Actual", anchor=tk.W)
         tabla_bajo_stock.heading("Unidad Medida", text="Unidad Medida", anchor=tk.W)
+        tabla_bajo_stock.column("Código", width=100)
         tabla_bajo_stock.column("Producto", width=150)
         tabla_bajo_stock.column("Stock Actual", width=100)
         tabla_bajo_stock.column("Unidad Medida", width=100)
 
-        for producto, datos in productos_bajo_stock:
-            tabla_bajo_stock.insert("", tk.END, values=(producto, datos["stock"], datos["unidad_medida"]))
-            datos_reporte.append({"Producto": producto, "Stock Actual": datos["stock"], "Unidad Medida": datos["unidad_medida"]})
+        for codigo, datos in productos_bajo_stock:
+            tabla_bajo_stock.insert("", tk.END, values=(codigo, datos["nombre"], datos["stock"], datos["unidad_medida"]))
+            datos_reporte.append({"Código": codigo, "Producto": datos["nombre"], "Stock Actual": datos["stock"], "Unidad Medida": datos["unidad_medida"]})
 
         scrollbar_y = ttk.Scrollbar(ventana_reporte, orient="vertical", command=tabla_bajo_stock.yview)
         scrollbar_y.pack(side="right", fill="y")
@@ -1173,16 +1186,18 @@ def generar_reporte_entradas():
               foreground=[('selected', '#000000')])
 
     # Treeview (tabla) para mostrar las entradas
-    tabla_entradas = ttk.Treeview(ventana_reporte, columns=("Producto", "Cantidad", "Fecha", "Destino"), show="headings", style="Grid.Treeview")
+    tabla_entradas = ttk.Treeview(ventana_reporte, columns=("Código", "Producto", "Cantidad", "Fecha", "Destino"), show="headings", style="Grid.Treeview")
     tabla_entradas.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     # Definir encabezados de columna
+    tabla_entradas.heading("Código", text="Código", anchor=tk.W)
     tabla_entradas.heading("Producto", text="Producto", anchor=tk.W)
     tabla_entradas.heading("Cantidad", text="Cantidad", anchor=tk.W)
     tabla_entradas.heading("Fecha", text="Fecha", anchor=tk.W)
     tabla_entradas.heading("Destino", text="Destino", anchor=tk.W)
 
     # Configurar ancho de columnas
+    tabla_entradas.column("Código", width=100)
     tabla_entradas.column("Producto", width=150)
     tabla_entradas.column("Cantidad", width=80)
     tabla_entradas.column("Fecha", width=100)
@@ -1193,16 +1208,11 @@ def generar_reporte_entradas():
     scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
     tabla_entradas.configure(yscrollcommand=scrollbar_vertical.set)
 
-    datos_reporte = [] # Lista para almacenar los datos del reporte
-    for entrada in entradas_departamentos:
-        fecha_str = entrada["fecha"].strftime("%Y-%m-%d") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
-        tabla_entradas.insert("", tk.END, values=(entrada["producto"], entrada["cantidad"], fecha_str, entrada["destino"]))
-        datos_reporte.append({"Producto": entrada["producto"], "Cantidad": entrada["cantidad"], "Fecha": fecha_str, "Destino": entrada["destino"]})
-
-    # Insertar datos iniciales en la tabla
+    # Insertar datos en la tabla (una sola vez)
     for entrada in entradas_departamentos:
         fecha_str = entrada["fecha"].strftime("%Y-%m-%d") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
         tabla_entradas.insert("", tk.END, values=(
+            entrada.get("codigo_producto", "N/A"),  # Obtener el código, si existe
             entrada["producto"],
             entrada["cantidad"],
             fecha_str,
@@ -1218,6 +1228,7 @@ def generar_reporte_entradas():
             if 0 <= index < len(entradas_departamentos):  # Verificar si el índice es válido
                 del entradas_departamentos[index]
                 tabla_entradas.delete(item_id)
+                guardar_datos() # Guardar los cambios al eliminar
             else:
                 messagebox.showerror("Error", "Índice de elemento no válido.")
 
@@ -1236,28 +1247,34 @@ def generar_reporte_entradas():
                 ventana_edicion.configure(bg="#A9A9A9")
 
                 # Crear etiquetas y campos de entrada para cada columna
-                tk.Label(ventana_edicion, text="Producto:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Código:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
+                entry_codigo = tk.Entry(ventana_edicion)
+                entry_codigo.grid(row=0, column=1, padx=5, pady=5)
+                entry_codigo.insert(0, entrada.get("codigo_producto", "N/A"))
+                entry_codigo.config(state="readonly") # Hacer el código de solo lectura
+
+                tk.Label(ventana_edicion, text="Producto:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
                 entry_producto = tk.Entry(ventana_edicion)
-                entry_producto.grid(row=0, column=1, padx=5, pady=5)
+                entry_producto.grid(row=1, column=1, padx=5, pady=5)
                 entry_producto.insert(0, entrada["producto"])
 
-                tk.Label(ventana_edicion, text="Cantidad:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Cantidad:", fg="#ffffff", bg="#A9A9A9").grid(row=2, column=0, padx=5, pady=5)
                 entry_cantidad = tk.Entry(ventana_edicion)
-                entry_cantidad.grid(row=1, column=1, padx=5, pady=5)
+                entry_cantidad.grid(row=2, column=1, padx=5, pady=5)
                 entry_cantidad.insert(0, entrada["cantidad"])
 
-                tk.Label(ventana_edicion, text="Fecha:", fg="#ffffff", bg="#A9A9A9").grid(row=2, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Fecha:", fg="#ffffff", bg="#A9A9A9").grid(row=3, column=0, padx=5, pady=5)
                 entry_fecha = tk.Entry(ventana_edicion)
-                entry_fecha.grid(row=2, column=1, padx=5, pady=5)
+                entry_fecha.grid(row=3, column=1, padx=5, pady=5)
                 entry_fecha.insert(0, entrada["fecha"])
 
-                tk.Label(ventana_edicion, text="Destino:", fg="#ffffff", bg="#A9A9A9").grid(row=3, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Destino:", fg="#ffffff", bg="#A9A9A9").grid(row=4, column=0, padx=5, pady=5)
                 entry_destino = tk.Entry(ventana_edicion)
-                entry_destino.grid(row=3, column=1, padx=5, pady=5)
+                entry_destino.grid(row=4, column=1, padx=5, pady=5)
                 entry_destino.insert(0, entrada["destino"])
 
                 # Función para guardar los cambios
-                def guardar_cambios():
+                def guardar_cambios_edicion():
                     entrada["producto"] = entry_producto.get()
                     try:
                         entrada["cantidad"] = int(entry_cantidad.get())
@@ -1268,11 +1285,12 @@ def generar_reporte_entradas():
                     entrada["destino"] = entry_destino.get()
                     # Formatear la fecha a una cadena legible para la tabla
                     fecha_str_tabla = entrada["fecha"].strftime("%Y-%m-%d") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
-                    tabla_entradas.item(seleccion, values=(entrada["producto"], entrada["cantidad"], fecha_str_tabla, entrada["destino"]))
+                    tabla_entradas.item(seleccion, values=(entrada.get("codigo_producto", "N/A"), entrada["producto"], entrada["cantidad"], fecha_str_tabla, entrada["destino"]))
+                    guardar_datos() # Guardar los cambios al editar
                     ventana_edicion.destroy()
 
                 # Botón para guardar los cambios
-                ttk.Button(ventana_edicion, text="Guardar", command=guardar_cambios).grid(row=4, column=0, columnspan=2, pady=10)
+                ttk.Button(ventana_edicion, text="Guardar", command=guardar_cambios_edicion).grid(row=5, column=0, columnspan=2, pady=10)
             else:
                 messagebox.showerror("Error", "Índice de elemento no válido.")
 
@@ -1293,6 +1311,7 @@ def generar_reporte_entradas():
                 if abreviatura in entrada["producto"].lower():
                     fecha_str = entrada["fecha"].strftime("%Y-%m-%d") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
                     tabla_entradas.insert("", tk.END, values=(
+                        entrada.get("codigo_producto", "N/A"),
                         entrada["producto"],
                         entrada["cantidad"],
                         fecha_str,
@@ -1315,8 +1334,7 @@ def generar_reporte_entradas():
             menu_contextual.post(event.x_root, event.y_root)
 
     tabla_entradas.bind("<Button-3>", mostrar_menu_contextual)
-    datos_reportes_para_guardar["Entradas"] = datos_reporte
-    
+    datos_reportes_para_guardar["Entradas"] = [{"Código": entrada.get("codigo_producto", "N/A"), "Producto": entrada["producto"], "Cantidad": entrada["cantidad"], "Fecha": str(entrada["fecha"]), "Destino": entrada["destino"]} for entrada in entradas_departamentos]
 
 
 def generar_reporte_salidas():
@@ -1353,7 +1371,8 @@ def generar_reporte_salidas():
               background=[('selected', '#bddfff')],
               foreground=[('selected', '#000000')])
 
-    tree = ttk.Treeview(ventana_reporte_salidas, columns=("Producto", "Cantidad", "Fecha", "Destino", "Requisición"), show="headings", style="Grid.Treeview")
+    tree = ttk.Treeview(ventana_reporte_salidas, columns=("Código", "Producto", "Cantidad", "Fecha", "Destino", "Requisición"), show="headings", style="Grid.Treeview")
+    tree.heading("Código", text="Código", anchor=tk.W)
     tree.heading("Producto", text="Producto", anchor=tk.W)
     tree.heading("Cantidad", text="Cantidad", anchor=tk.W)
     tree.heading("Fecha", text="Fecha", anchor=tk.W)
@@ -1365,15 +1384,17 @@ def generar_reporte_salidas():
     tree.configure(yscrollcommand=scrollbar.set)
     scrollbar.grid(row=0, column=1, sticky="ns", pady=10)
 
-    datos_reporte = [] # Lista para almacenar los datos del reporte
+    # Insertar datos en la tabla (una sola vez)
     for salida in salidas_departamentos:
         fecha_str = salida["fecha"].strftime("%Y-%m-%d") if isinstance(salida["fecha"], datetime.date) else str(salida["fecha"])
-        tree.insert("", "end", values=(salida["producto"], salida["cantidad"], fecha_str, salida["destino"], salida["requisicion"]))
-        datos_reporte.append({"Producto": salida["producto"], "Cantidad": salida["cantidad"], "Fecha": fecha_str, "Destino": salida["destino"], "Requisición": salida["requisicion"]})
-
-    for salida in salidas_departamentos:
-        fecha_str = salida["fecha"].strftime("%Y-%m-%d") if isinstance(salida["fecha"], datetime.date) else str(salida["fecha"])
-        tree.insert("", "end", values=(salida["producto"], salida["cantidad"], fecha_str, salida["destino"], salida["requisicion"]))
+        tree.insert("", "end", values=(
+            salida.get("codigo_producto", "N/A"),  # Obtener el código, si existe
+            salida["producto"],
+            salida["cantidad"],
+            fecha_str,
+            salida["destino"],
+            salida["requisicion"]
+        ))
 
     def eliminar_salida():
         seleccion = tree.selection()
@@ -1383,6 +1404,7 @@ def generar_reporte_salidas():
             if 0 <= index < len(salidas_departamentos):
                 del salidas_departamentos[index]
                 tree.delete(item_id)
+                guardar_datos() # Guardar los cambios al eliminar
             else:
                 messagebox.showerror("Error", "Índice de elemento no válido.")
 
@@ -1400,29 +1422,35 @@ def generar_reporte_salidas():
                 ventana_edicion.configure(bg="#A9A9A9")
 
                 # Crear etiquetas y campos de entrada para cada columna
-                tk.Label(ventana_edicion, text="Producto:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Código:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
+                entry_codigo = tk.Entry(ventana_edicion)
+                entry_codigo.grid(row=0, column=1, padx=5, pady=5)
+                entry_codigo.insert(0, salida.get("codigo_producto", "N/A"))
+                entry_codigo.config(state="readonly") # Hacer el código de solo lectura
+
+                tk.Label(ventana_edicion, text="Producto:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
                 entry_producto = tk.Entry(ventana_edicion)
-                entry_producto.grid(row=0, column=1, padx=5, pady=5)
+                entry_producto.grid(row=1, column=1, padx=5, pady=5)
                 entry_producto.insert(0, salida["producto"])
 
-                tk.Label(ventana_edicion, text="Cantidad:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Cantidad:", fg="#ffffff", bg="#A9A9A9").grid(row=2, column=0, padx=5, pady=5)
                 entry_cantidad = tk.Entry(ventana_edicion)
-                entry_cantidad.grid(row=1, column=1, padx=5, pady=5)
+                entry_cantidad.grid(row=2, column=1, padx=5, pady=5)
                 entry_cantidad.insert(0, salida["cantidad"])
 
-                tk.Label(ventana_edicion, text="Fecha:", fg="#ffffff", bg="#A9A9A9").grid(row=2, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Fecha:", fg="#ffffff", bg="#A9A9A9").grid(row=3, column=0, padx=5, pady=5)
                 entry_fecha = tk.Entry(ventana_edicion)
-                entry_fecha.grid(row=2, column=1, padx=5, pady=5)
+                entry_fecha.grid(row=3, column=1, padx=5, pady=5)
                 entry_fecha.insert(0, salida["fecha"])
 
-                tk.Label(ventana_edicion, text="Destino:", fg="#ffffff", bg="#A9A9A9").grid(row=3, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Destino:", fg="#ffffff", bg="#A9A9A9").grid(row=4, column=0, padx=5, pady=5)
                 entry_destino = tk.Entry(ventana_edicion)
-                entry_destino.grid(row=3, column=1, padx=5, pady=5)
+                entry_destino.grid(row=4, column=1, padx=5, pady=5)
                 entry_destino.insert(0, salida["destino"])
 
-                tk.Label(ventana_edicion, text="Requisición:", fg="#ffffff", bg="#A9A9A9").grid(row=4, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Requisición:", fg="#ffffff", bg="#A9A9A9").grid(row=5, column=0, padx=5, pady=5)
                 entry_requisicion = tk.Entry(ventana_edicion)
-                entry_requisicion.grid(row=4, column=1, padx=5, pady=5)
+                entry_requisicion.grid(row=5, column=1, padx=5, pady=5)
                 entry_requisicion.insert(0, salida["requisicion"])
 
                 # Función para guardar los cambios
@@ -1437,11 +1465,12 @@ def generar_reporte_salidas():
                     salida["destino"] = entry_destino.get()
                     salida["requisicion"] = entry_requisicion.get()
                     fecha_str_tabla = salida["fecha"].strftime("%Y-%m-%d") if isinstance(salida["fecha"], datetime.date) else str(salida["fecha"])
-                    tree.item(seleccion, values=(salida["producto"], salida["cantidad"], fecha_str_tabla, salida["destino"], salida["requisicion"]))
+                    tree.item(seleccion, values=(salida.get("codigo_producto", "N/A"), salida["producto"], salida["cantidad"], fecha_str_tabla, salida["destino"], salida["requisicion"]))
+                    guardar_datos() # Guardar los cambios al editar
                     ventana_edicion.destroy()
 
                 # Botón para guardar los cambios
-                ttk.Button(ventana_edicion, text="Guardar", command=guardar_cambios).grid(row=5, column=0, columnspan=2, pady=10)
+                ttk.Button(ventana_edicion, text="Guardar", command=guardar_cambios).grid(row=6, column=0, columnspan=2, pady=10)
             else:
                 messagebox.showerror("Error", "Índice de elemento no válido.")
 
@@ -1462,6 +1491,7 @@ def generar_reporte_salidas():
                 if abreviatura in salida["producto"].lower():
                     fecha_str = salida["fecha"].strftime("%Y-%m-%d") if isinstance(salida["fecha"], datetime.date) else str(salida["fecha"])
                     tree.insert("", "end", values=(
+                        salida.get("codigo_producto", "N/A"),
                         salida["producto"],
                         salida["cantidad"],
                         fecha_str,
@@ -1488,10 +1518,10 @@ def generar_reporte_salidas():
 
     ventana_reporte_salidas.grid_columnconfigure(0, weight=1)
     ventana_reporte_salidas.grid_rowconfigure(0, weight=1)
-    datos_reportes_para_guardar["Salidas"] = datos_reporte
+    datos_reportes_para_guardar["Salidas"] = [{"Código": salida.get("codigo_producto", "N/A"), "Producto": salida["producto"], "Cantidad": salida["cantidad"], "Fecha": str(salida["fecha"]), "Destino": salida["destino"], "Requisición": salida["requisicion"]} for salida in salidas_departamentos]
 
 ventana_reporte_salidas_espera = None  # Variable global para la ventana del reporte de espera
-tabla_salidas_espera = None           # Variable global para la tabla
+tabla_salidas_espera = None          # Variable global para la tabla
 
 def actualizar_tabla_salidas_espera():
     """Actualiza el contenido de la tabla de salidas en espera."""
@@ -1500,6 +1530,7 @@ def actualizar_tabla_salidas_espera():
         tabla_salidas_espera.delete(*tabla_salidas_espera.get_children())
         for salida in salidas_espera:
             tabla_salidas_espera.insert("", tk.END, values=(
+                salida.get("codigo_producto", "N/A"), # Asumiendo que también tienes el código aquí
                 salida["producto"],
                 salida["cantidad"],
                 salida["departamento"],
@@ -1529,15 +1560,17 @@ def generar_reporte_salidas_espera():
     style.map("Grid.Treeview", background=[('selected', '#bddfff')], foreground=[('selected', '#000000')])
 
     # Treeview (tabla) para mostrar las salidas en espera
-    tabla_salidas_espera = ttk.Treeview(ventana_reporte_salidas_espera, columns=("Producto", "Cantidad", "Departamento"), show="headings", style="Grid.Treeview")
+    tabla_salidas_espera = ttk.Treeview(ventana_reporte_salidas_espera, columns=("Código", "Producto", "Cantidad", "Departamento"), show="headings", style="Grid.Treeview")
     tabla_salidas_espera.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
     # Definir encabezados de columna
+    tabla_salidas_espera.heading("Código", text="Código", anchor=tk.W)
     tabla_salidas_espera.heading("Producto", text="Producto", anchor=tk.W)
     tabla_salidas_espera.heading("Cantidad", text="Cantidad", anchor=tk.W)
     tabla_salidas_espera.heading("Departamento", text="Departamento", anchor=tk.W)
 
     # Configurar ancho de columnas
+    tabla_salidas_espera.column("Código", width=100)
     tabla_salidas_espera.column("Producto", width=200)
     tabla_salidas_espera.column("Cantidad", width=100)
     tabla_salidas_espera.column("Departamento", width=200)
@@ -1550,8 +1583,13 @@ def generar_reporte_salidas_espera():
 
     datos_reporte = [] # Lista para almacenar los datos del reporte
     for salida in salidas_espera:
-        tabla_salidas_espera.insert("", tk.END, values=(salida["producto"], salida["cantidad"], salida["departamento"]))
-        datos_reporte.append({"Producto": salida["producto"], "Cantidad": salida["cantidad"], "Departamento": salida["departamento"]})
+        tabla_salidas_espera.insert("", tk.END, values=(
+            salida.get("codigo_producto", "N/A"),
+            salida["producto"],
+            salida["cantidad"],
+            salida["departamento"]
+        ))
+        datos_reporte.append({"Código": salida.get("codigo_producto", "N/A"), "Producto": salida["producto"], "Cantidad": salida["cantidad"], "Departamento": salida["departamento"]})
 
     # Insertar datos iniciales en la tabla
     actualizar_tabla_salidas_espera()
@@ -1562,16 +1600,18 @@ def generar_reporte_salidas_espera():
         if item_seleccionado:
             item = item_seleccionado[0]
             valores = tabla_salidas_espera.item(item, "values")
-            if len(valores) >= 3:
-                producto = valores[0]
-                cantidad = valores[1]
-                destino = valores[2]
+            if len(valores) >= 4: # Ahora esperamos 4 valores (Código, Producto, Cantidad, Departamento)
+                codigo_producto = valores[0]
+                producto = valores[1]
+                cantidad = valores[2]
+                destino = valores[3]
 
                 def confirmar_requisicion():
                     numero_requisicion = entry_requisicion.get()
                     fecha_salida = entry_fecha.get()
 
                     salidas_departamentos.append({
+                        "codigo_producto": codigo_producto,
                         "producto": producto,
                         "cantidad": cantidad,
                         "fecha": fecha_salida,
@@ -1581,6 +1621,7 @@ def generar_reporte_salidas_espera():
 
                     try:
                         diccionario_a_eliminar = {
+                            "codigo_producto": codigo_producto,
                             "producto": producto,
                             "cantidad": int(cantidad),
                             "departamento": destino
@@ -1590,7 +1631,8 @@ def generar_reporte_salidas_espera():
                         return
 
                     for i, salida_espera in enumerate(salidas_espera):
-                        if (salida_espera["producto"] == diccionario_a_eliminar["producto"] and
+                        if (salida_espera.get("codigo_producto") == diccionario_a_eliminar.get("codigo_producto") and
+                                salida_espera["producto"] == diccionario_a_eliminar["producto"] and
                                 salida_espera["cantidad"] == diccionario_a_eliminar["cantidad"] and
                                 salida_espera["departamento"] == diccionario_a_eliminar["departamento"]):
                             del salidas_espera[i]
@@ -1649,19 +1691,25 @@ def generar_reporte_salidas_espera():
                 ventana_edicion.configure(bg="#A9A9A9")
 
                 # Crear etiquetas y campos de entrada para cada columna
-                tk.Label(ventana_edicion, text="Producto:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Código:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
+                entry_codigo = ttk.Entry(ventana_edicion)
+                entry_codigo.grid(row=0, column=1, padx=5, pady=5)
+                entry_codigo.insert(0, salida.get("codigo_producto", "N/A"))
+                entry_codigo.config(state="readonly")
+
+                tk.Label(ventana_edicion, text="Producto:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
                 entry_producto = ttk.Entry(ventana_edicion)
-                entry_producto.grid(row=0, column=1, padx=5, pady=5)
+                entry_producto.grid(row=1, column=1, padx=5, pady=5)
                 entry_producto.insert(0, salida["producto"])
 
-                tk.Label(ventana_edicion, text="Cantidad:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Cantidad:", fg="#ffffff", bg="#A9A9A9").grid(row=2, column=0, padx=5, pady=5)
                 entry_cantidad = ttk.Entry(ventana_edicion)
-                entry_cantidad.grid(row=1, column=1, padx=5, pady=5)
+                entry_cantidad.grid(row=2, column=1, padx=5, pady=5)
                 entry_cantidad.insert(0, salida["cantidad"])
 
-                tk.Label(ventana_edicion, text="Departamento:", fg="#ffffff", bg="#A9A9A9").grid(row=2, column=0, padx=5, pady=5)
+                tk.Label(ventana_edicion, text="Departamento:", fg="#ffffff", bg="#A9A9A9").grid(row=3, column=0, padx=5, pady=5)
                 entry_departamento = ttk.Entry(ventana_edicion)
-                entry_departamento.grid(row=2, column=1, padx=5, pady=5)
+                entry_departamento.grid(row=3, column=1, padx=5, pady=5)
                 entry_departamento.insert(0, salida["departamento"])
 
                 # Función para guardar los cambios
@@ -1673,12 +1721,12 @@ def generar_reporte_salidas_espera():
                         messagebox.showerror("Error", "Cantidad inválida. Debe ser un número entero.")
                         return
                     salida["departamento"] = entry_departamento.get()
-                    tabla_salidas_espera.item(seleccion, values=(salida["producto"], salida["cantidad"], salida["departamento"]))
+                    tabla_salidas_espera.item(seleccion, values=(salida.get("codigo_producto", "N/A"), salida["producto"], salida["cantidad"], salida["departamento"]))
                     ventana_edicion.destroy()
                     actualizar_tabla_salidas_espera() # Actualizar la tabla principal
 
                 # Botón para guardar los cambios
-                ttk.Button(ventana_edicion, text="Guardar", command=guardar_cambios).grid(row=3, column=0, columnspan=2, pady=10)
+                ttk.Button(ventana_edicion, text="Guardar", command=guardar_cambios).grid(row=4, column=0, columnspan=2, pady=10)
             else:
                 messagebox.showerror("Error", "Índice de elemento no válido.")
 
@@ -1698,6 +1746,7 @@ def generar_reporte_salidas_espera():
             for salida in salidas_espera:
                 if abreviatura in salida["producto"].lower():
                     tabla_salidas_espera.insert("", tk.END, values=(
+                        salida.get("codigo_producto", "N/A"),
                         salida["producto"],
                         salida["cantidad"],
                         salida["departamento"],
@@ -1724,7 +1773,7 @@ def generar_reporte_salidas_espera():
     ventana_reporte_salidas_espera.grid_columnconfigure(0, weight=1)
     ventana_reporte_salidas_espera.grid_rowconfigure(0, weight=1)
 
-    datos_reportes_para_guardar["Salidas en Espera"] = datos_reporte
+    datos_reportes_para_guardar["Salidas en Espera"] = [{"Código": salida.get("codigo_producto", "N/A"), "Producto": salida["producto"], "Cantidad": salida["cantidad"], "Departamento": salida["departamento"]} for salida in salidas_espera]
 
 
 
@@ -2744,4 +2793,4 @@ def mostrar_menu():
     ventana.mainloop()
 
 # --- Ejecución de la aplicación ---
-iniciar_sesion()
+mostrar_menu()
