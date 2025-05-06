@@ -55,7 +55,9 @@ def guardar_datos():
         },
         "usuarios": usuarios,
         "salidas_departamentos": salidas_departamentos,
-        "Consumo": datos_consumo_para_guardar,
+        
+
+      
         "Reportes": datos_reportes_para_guardar # Añadimos la sección de Reportes
     }
     try:
@@ -1145,7 +1147,7 @@ def generar_reporte_bajo_stock():
 
     datos_reportes_para_guardar["Bajo Stock"] = datos_reporte
     
-        
+           
 
 
 
@@ -1335,7 +1337,7 @@ def generar_reporte_entradas():
 
     tabla_entradas.bind("<Button-3>", mostrar_menu_contextual)
     datos_reportes_para_guardar["Entradas"] = [{"Código": entrada.get("codigo_producto", "N/A"), "Producto": entrada["producto"], "Cantidad": entrada["cantidad"], "Fecha": str(entrada["fecha"]), "Destino": entrada["destino"]} for entrada in entradas_departamentos]
-
+    
 
 def generar_reporte_salidas():
     """Genera un reporte del historial de salidas."""
@@ -1774,7 +1776,7 @@ def generar_reporte_salidas_espera():
     ventana_reporte_salidas_espera.grid_rowconfigure(0, weight=1)
 
     datos_reportes_para_guardar["Salidas en Espera"] = [{"Código": salida.get("codigo_producto", "N/A"), "Producto": salida["producto"], "Cantidad": salida["cantidad"], "Departamento": salida["departamento"]} for salida in salidas_espera]
-
+    
 
 
 def ventana_reportes():
