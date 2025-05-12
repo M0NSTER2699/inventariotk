@@ -43,7 +43,7 @@ datos_reportes_para_guardar = {
 
 def guardar_datos():
     """Guarda los datos en un archivo JSON."""
-    global datos_consumo_para_guardar, datos_reportes_para_guardar
+    global datos_consumo_para_guardar, datos_reportes_para_guardar, usuarios
     datos = {
         "inventario": {
             producto: {
@@ -55,10 +55,7 @@ def guardar_datos():
         },
         "usuarios": usuarios,
         "salidas_departamentos": salidas_departamentos,
-        
-
-      
-        "Reportes": datos_reportes_para_guardar # Añadimos la sección de Reportes
+        "Reportes": datos_reportes_para_guardar
     }
     try:
         with open("inventario.json", "w", encoding="utf-8") as archivo:
@@ -73,103 +70,70 @@ def guardar_datos():
 
 def cargar_datos():
     """Carga los datos desde un archivo JSON."""
-    global inventario, usuarios, salidas_departamentos, datos_consumo_para_guardar, datos_reportes_para_guardar
+    global inventario, usuarios, salidas_departamentos, datos_consumo_para_guardar, datos_reportes_para_guardar, entradas_departamentos, salidas_espera
+
     datos_consumo_para_guardar = []
-    datos_reportes_para_guardar = {
-        "Bajo Stock": [],
-        "Entradas": [],
-        "Salidas": [],
-        "Salidas en Espera": []
-    }
+    archivo_existe = True
     try:
         with open("inventario.json", "r", encoding="utf-8") as archivo:
             datos = json.load(archivo)
             inventario = {}
-            for codigo_producto, datos_producto in datos.get("inventario", {}).items(): # Asumimos que las claves en "inventario" son los códigos
+            for codigo_producto, datos_producto in datos.get("inventario", {}).items():
                 fecha_entrada = datos_producto.get("fecha_entrada")
                 fecha_salida = datos_producto.get("fecha_salida")
-
-                if fecha_entrada == "null" or fecha_entrada is None:
-                    fecha_entrada = None
-                else:
-                    try:
-                        fecha_entrada = datetime.date.fromisoformat(fecha_entrada)
-                    except ValueError:
-                        fecha_entrada = fecha_entrada # Mantener la cadena original si no es un formato ISO válido
-
-                if fecha_salida == "null" or fecha_salida is None:
-                    fecha_salida = None
-                else:
-                    try:
-                        fecha_salida = datetime.date.fromisoformat(fecha_salida)
-                    except ValueError:
-                        fecha_salida = fecha_salida # Mantener la cadena original si no es un formato ISO válido
-
-                inventario[codigo_producto] = {
-                    **datos_producto,
-                    "fecha_entrada": fecha_entrada,
-                    "fecha_salida": fecha_salida
-                }
-            usuarios = datos.get("usuarios", [])
+                fecha_entrada = datetime.date.fromisoformat(fecha_entrada) if fecha_entrada and fecha_entrada != "null" else None
+                fecha_salida = datetime.date.fromisoformat(fecha_salida) if fecha_salida and fecha_salida != "null" else None
+                inventario[codigo_producto] = {**datos_producto, "fecha_entrada": fecha_entrada, "fecha_salida": fecha_salida}
+            usuarios = datos.get("usuarios", {})
             salidas_departamentos = datos.get("salidas_departamentos", [])
             datos_consumo_para_guardar = datos.get("Consumo", [])
-            datos_reportes_para_guardar = datos.get("Reportes", {
-                "Bajo Stock": [],
-                "Entradas": [],
-                "Salidas": [],
-                "Salidas en Espera": []
-            })
-
+            reportes = datos.get("Reportes", {"Bajo Stock": [], "Entradas": [], "Salidas": [], "Salidas en Espera": []})
+            datos_reportes_para_guardar = {"Bajo Stock": reportes.get("Bajo Stock", []), "Entradas": reportes.get("Entradas", []), "Salidas": reportes.get("Salidas", []), "Salidas en Espera": reportes.get("Salidas en Espera", []), "Consumo": datos_consumo_para_guardar}
+            entradas_departamentos = datos_reportes_para_guardar.get("Entradas", [])
+            salidas_espera = datos_reportes_para_guardar.get("Salidas en Espera", [])
     except FileNotFoundError:
+        archivo_existe = False
         messagebox.showinfo("Cargar Datos", "No se encontró el archivo inventario.json. Se creará uno nuevo.")
         inventario = {}
-        usuarios = []
+        usuarios = {"admin": hashlib.sha256("admin".encode()).hexdigest()}
         salidas_departamentos = []
         datos_consumo_para_guardar = []
-        datos_reportes_para_guardar = {
-            "Bajo Stock": [],
-            "Entradas": [],
-            "Salidas": [],
-            "Salidas en Espera": []
-        }
+        datos_reportes_para_guardar = {"Bajo Stock": [], "Entradas": [], "Salidas": [], "Salidas en Espera": []}
+        entradas_departamentos = []
+        salidas_espera = []
     except json.JSONDecodeError:
         messagebox.showerror("Error", "No se pudieron cargar los datos: El archivo JSON está corrupto.")
         inventario = {}
-        usuarios = []
+        usuarios = {"admin": hashlib.sha256("admin".encode()).hexdigest()}
         salidas_departamentos = []
         datos_consumo_para_guardar = []
-        datos_reportes_para_guardar = {
-            "Bajo Stock": [],
-            "Entradas": [],
-            "Salidas": [],
-            "Salidas en Espera": []
-        }
+        datos_reportes_para_guardar = {"Bajo Stock": [], "Entradas": [], "Salidas": [], "Salidas en Espera": []}
+        entradas_departamentos = []
+        salidas_espera = []
     except ValueError as e:
         messagebox.showerror("Error", f"No se pudieron cargar los datos: {e}")
         inventario = {}
-        usuarios = []
+        usuarios = {"admin": hashlib.sha256("admin".encode()).hexdigest()}
         salidas_departamentos = []
         datos_consumo_para_guardar = []
-        datos_reportes_para_guardar = {
-            "Bajo Stock": [],
-            "Entradas": [],
-            "Salidas": [],
-            "Salidas en Espera": []
-        }
+        datos_reportes_para_guardar = {"Bajo Stock": [], "Entradas": [], "Salidas": [], "Salidas en Espera": []}
+        entradas_departamentos = []
+        salidas_espera = []
     except Exception as e:
         messagebox.showerror("Error", f"Error inesperado al cargar los datos: {e}")
         inventario = {}
-        usuarios = []
+        usuarios = {"admin": hashlib.sha256("admin".encode()).hexdigest()}
         salidas_departamentos = []
         datos_consumo_para_guardar = []
-        datos_reportes_para_guardar = {
-            "Bajo Stock": [],
-            "Entradas": [],
-            "Salidas": [],
-            "Salidas en Espera": []
-        }
-
-
+        datos_reportes_para_guardar = {"Bajo Stock": [], "Entradas": [], "Salidas": [], "Salidas en Espera": []}
+        entradas_departamentos = []
+        salidas_espera = []
+    finally:
+        if not archivo_existe or not usuarios:
+            
+            usuarios["admin"] = hashlib.sha256("admin".encode()).hexdigest()
+            guardar_datos()
+        
 
 def verificar_clave(ventana_clave, entry_clave, ventana_login):
     clave_ingresada = hashlib.sha256(entry_clave.get().encode()).hexdigest()
@@ -183,13 +147,12 @@ def verificar_clave(ventana_clave, entry_clave, ventana_login):
 
 def iniciar_sesion():
     """Permite al usuario iniciar sesión."""
-    global ventana_login
+    global ventana_login,usuarios
 
     ventana_login = tk.Tk()
     ventana_login.title("Login")
-    ventana_login.configure(bg="#263238")  # Fondo oscuro
+    ventana_login.configure(bg="#263238")
 
-    # --- Estilos ttk Personalizados ---
     style = ttk.Style(ventana_login)
     style.theme_use('clam')
     style.configure("TLabel", foreground="#eceff1", background="#263238", font=("Arial", 14))
@@ -197,83 +160,79 @@ def iniciar_sesion():
     style.configure("TButton", foreground="#eceff1", background="#008000", font=("Arial", 14, "bold"))
     style.configure("TCheckbutton", foreground="#eceff1", background="#263238", font=("Arial", 14))
 
-    # Marco principal para el contenido
     frame_contenido = tk.Frame(ventana_login, bg="#263238")
     frame_contenido.pack(padx=20, pady=20, fill="both", expand=True)
 
-    # Marco para el logo (a la izquierda)
     frame_logo = tk.Frame(frame_contenido, bg="#263238")
-    frame_logo.pack(side="left", padx=20, pady=20, fill="both", expand=True)  # Hacer que el marco se expanda
+    frame_logo.pack(side="left", padx=20, pady=20, fill="both", expand=True)
 
-    # Cargar el logo y redimensionarlo
     try:
         imagen_logo = Image.open("C:/Users/monster/Desktop/src/server/routes/imagenes/logo.png")
         imagen_logo = imagen_logo.resize((300, 300))
         logo = ImageTk.PhotoImage(imagen_logo)
         label_logo = tk.Label(frame_logo, image=logo, bg="#263238")
         label_logo.image = logo
-        label_logo.pack(fill="both", expand=True)  # Hacer que el logo se expanda
+        label_logo.pack(fill="both", expand=True)
     except FileNotFoundError:
         messagebox.showerror("Error", "No se encontró el archivo del logo.")
 
-    # Marco para los campos de entrada (a la derecha)
     frame_campos = tk.Frame(frame_contenido, bg="#263238")
-    frame_campos.pack(side="right", padx=20, pady=20, fill="both", expand=True)  # Hacer que el marco se expanda
-
-    # Configurar la cuadrícula para que se expanda
-    frame_campos.grid_columnconfigure(1, weight=1)  # Hacer que la columna 1 se expanda
-    frame_campos.grid_rowconfigure(0, weight=1)  # Hacer que las filas se expandan
+    frame_campos.pack(side="right", padx=20, pady=20, fill="both", expand=True)
+    frame_campos.grid_columnconfigure(1, weight=1)
+    frame_campos.grid_rowconfigure(0, weight=1)
     frame_campos.grid_rowconfigure(1, weight=1)
     frame_campos.grid_rowconfigure(2, weight=1)
-    frame_campos.grid_rowconfigure(3, weight=1)  # Agregar fila para la casilla de verificación
+    frame_campos.grid_rowconfigure(3, weight=1)
 
-    # Centrar los campos de entrada
     ttk.Label(frame_campos, text="Usuario:", background="#263238", foreground="#eceff1").grid(row=0, column=0, pady=5, sticky="e")
-    entry_nombre = ttk.Entry(frame_campos, width=30)  # Aumentar el ancho del campo de entrada
-    entry_nombre.grid(row=0, column=1, pady=5, sticky="ew")  # sticky="ew" para expandir horizontalmente
+    entry_nombre = ttk.Entry(frame_campos, width=30)
+    entry_nombre.grid(row=0, column=1, pady=5, sticky="ew")
 
     ttk.Label(frame_campos, text="Contraseña:", background="#263238", foreground="#eceff1").grid(row=1, column=0, pady=5, sticky="e")
-    entry_contrasena = ttk.Entry(frame_campos, show="*", width=30)  # Aumentar el ancho del campo de entrada
-    entry_contrasena.grid(row=1, column=1, pady=5, sticky="ew")  # sticky="ew" para expandir horizontalmente
+    entry_contrasena = ttk.Entry(frame_campos, show="*", width=30)
+    entry_contrasena.grid(row=1, column=1, pady=5, sticky="ew")
 
-    var_admin = tk.IntVar()  # Variable para la casilla de verificación
+    var_admin = tk.IntVar()
     check_admin = ttk.Checkbutton(frame_campos, text="Administrador", variable=var_admin)
-    check_admin.grid(row=2, column=0, columnspan=2, pady=5, sticky="w") # sticky="w" para alinear a la izquierda
+    check_admin.grid(row=2, column=0, columnspan=2, pady=5, sticky="w")
 
     def iniciar():
         nombre_usuario = entry_nombre.get()
         contrasena = entry_contrasena.get()
         contrasena_hash = hashlib.sha256(contrasena.encode()).hexdigest()
-        es_admin_seleccionado = var_admin.get()  # Obtener el valor de la casilla de verificación
+        es_admin_seleccionado = var_admin.get()
 
-        if not es_admin_seleccionado:
-            messagebox.showerror("Error", "Debe marcar la casilla de 'Administrador' para iniciar sesión.")
-            return  # Detener la función si la casilla no está marcada
+       
+      
 
-        if nombre_usuario in usuarios and usuarios[nombre_usuario] == contrasena_hash:
-            # La casilla está marcada y las credenciales son correctas, mostrar la ventana de clave
-            ventana_clave = tk.Toplevel(ventana_login)
-            ventana_clave.title("Clave de Administrador")
-            ventana_clave.configure(bg="#263238") # Fondo oscuro
+        if es_admin_seleccionado:
+            if nombre_usuario in usuarios:
+                # Verifica si la contraseña ingresada coincide con la del usuario
+                if usuarios[nombre_usuario] == contrasena_hash:
+                    ventana_clave = tk.Toplevel(ventana_login)
+                    ventana_clave.title("Clave de Administrador")
+                    ventana_clave.configure(bg="#263238")
 
-            # --- Estilos ttk Personalizados ---
-            style_clave = ttk.Style(ventana_clave)
-            style_clave.theme_use('clam')
-            style_clave.configure("TLabel", foreground="#eceff1", background="#263238", font=("Arial", 14))
-            style_clave.configure("TEntry", fieldbackground="#f0f0f0", foreground="black", font=("Arial", 14))
-            style_clave.configure("TButton", foreground="#eceff1", background="#008000", font=("Arial", 14, "bold"))
-            style_clave.configure("TCheckbutton", foreground="#eceff1", background="#263238", font=("Arial", 14))
+                    style_clave = ttk.Style(ventana_clave)
+                    style_clave.theme_use('clam')
+                    style_clave.configure("TLabel", foreground="#eceff1", background="#263238", font=("Arial", 14))
+                    style_clave.configure("TEntry", fieldbackground="#f0f0f0", foreground="black", font=("Arial", 14))
+                    style_clave.configure("TButton", foreground="#eceff1", background="#008000", font=("Arial", 14, "bold"))
+                    style_clave.configure("TCheckbutton", foreground="#eceff1", background="#263238", font=("Arial", 14))
 
-            ttk.Label(ventana_clave, text="Clave:", background="#263238", foreground="#eceff1", font=("Arial", 14)).pack(pady=5)
-            entry_clave_admin = ttk.Entry(ventana_clave, show="*", font=("Arial", 14), width=20)
-            entry_clave_admin.pack(pady=5)
+                    ttk.Label(ventana_clave, text="Clave:", background="#263238", foreground="#eceff1", font=("Arial", 14)).pack(pady=5)
+                    entry_clave_admin = ttk.Entry(ventana_clave, show="*", font=("Arial", 14), width=20)
+                    entry_clave_admin.pack(pady=5)
 
-            ttk.Button(ventana_clave, text="Verificar", command=lambda: verificar_clave(ventana_clave, entry_clave_admin, ventana_login), style="TButton").pack(pady=10)
+                    ttk.Button(ventana_clave, text="Verificar", command=lambda: verificar_clave(ventana_clave, entry_clave_admin, ventana_login), style="TButton").pack(pady=10)
+                else:
+                    messagebox.showerror("Error", "Contraseña incorrecta para este usuario.")
+            else:
+                messagebox.showerror("Error", "Usuario no encontrado.")
         else:
-            messagebox.showerror("Error", "Nombre de usuario o contraseña incorrectos.")
+            messagebox.showerror("Error", "Debe marcar la casilla de 'Administrador' para iniciar sesión.")
 
-    ttk.Button(frame_campos, text="Iniciar Sesión", command=iniciar, style="TButton").grid(row=3, column=0, columnspan=2, pady=10, sticky="ew")  # sticky="ew" para expandir horizontalmente
-
+    ttk.Button(frame_campos, text="Iniciar Sesión", command=iniciar, style="TButton").grid(row=3, column=0, columnspan=2, pady=10, sticky="ew")
     ventana_login.mainloop()
                             #Hasta aqui funciones de inicio de sesion
 
@@ -1158,7 +1117,7 @@ def generar_reporte_entradas():
     ventana_reporte = tk.Toplevel(ventana)
     ventana_reporte.title("Reporte de Entradas")
     ventana_reporte.geometry("800x500")
-    ventana_reporte.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+    ventana_reporte.configure(bg="#A9A9A9")
 
     # --- Estilos ttk Personalizados ---
     style = ttk.Style(ventana_reporte)
@@ -1210,16 +1169,19 @@ def generar_reporte_entradas():
     scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
     tabla_entradas.configure(yscrollcommand=scrollbar_vertical.set)
 
-    # Insertar datos en la tabla (una sola vez)
+   # Insertar datos en la tabla (una sola vez)
     for entrada in entradas_departamentos:
-        fecha_str = entrada["fecha"].strftime("%Y-%m-%d") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
+        fecha_str = entrada.get("Fecha", "N/A") 
+        if isinstance(fecha_str, datetime.date):
+            fecha_str = fecha_str.strftime("%Y-%m-%d")
         tabla_entradas.insert("", tk.END, values=(
-            entrada.get("codigo_producto", "N/A"),  # Obtener el código, si existe
-            entrada["producto"],
-            entrada["cantidad"],
+            entrada.get("Código", "N/A"),
+            entrada.get("Producto","N/A"), 
+            entrada.get("Cantidad", "N/A"),
             fecha_str,
-            entrada["destino"]
+            entrada.get("Destino", "N/A") 
         ))
+   
 
     def eliminar_entrada():
         seleccion = tabla_entradas.selection()
@@ -1336,8 +1298,8 @@ def generar_reporte_entradas():
             menu_contextual.post(event.x_root, event.y_root)
 
     tabla_entradas.bind("<Button-3>", mostrar_menu_contextual)
-    datos_reportes_para_guardar["Entradas"] = [{"Código": entrada.get("codigo_producto", "N/A"), "Producto": entrada["producto"], "Cantidad": entrada["cantidad"], "Fecha": str(entrada["fecha"]), "Destino": entrada["destino"]} for entrada in entradas_departamentos]
-    
+    datos_reportes_para_guardar["Entradas"] = [{"Código": entrada.get("codigo_producto", "N/A"), "Producto": entrada.get("producto", "N/A"), "Cantidad": entrada.get("cantidad", "N/A"), "Fecha": str(entrada.get("fecha", "N/A")), "Destino": entrada.get("destino", "N/A")} for entrada in entradas_departamentos]
+
 
 def generar_reporte_salidas():
     """Genera un reporte del historial de salidas."""
@@ -1528,11 +1490,12 @@ tabla_salidas_espera = None          # Variable global para la tabla
 def actualizar_tabla_salidas_espera():
     """Actualiza el contenido de la tabla de salidas en espera."""
     global tabla_salidas_espera
+    print(f"Contenido de salidas_espera al actualizar la tabla: {salidas_espera}")
     if tabla_salidas_espera:
         tabla_salidas_espera.delete(*tabla_salidas_espera.get_children())
         for salida in salidas_espera:
             tabla_salidas_espera.insert("", tk.END, values=(
-                salida.get("codigo_producto", "N/A"), # Asumiendo que también tienes el código aquí
+                salida.get("Código", "N/A"), # Asumiendo que también tienes el código aquí
                 salida["producto"],
                 salida["cantidad"],
                 salida["departamento"],
@@ -1540,17 +1503,19 @@ def actualizar_tabla_salidas_espera():
 
 def generar_reporte_salidas_espera():
     """Genera o trae al frente la ventana del reporte de salidas en espera."""
-    global ventana_reporte_salidas_espera, tabla_salidas_espera # Declarar tabla_salidas_espera como global
+    global ventana_reporte_salidas_espera, tabla_salidas_espera
 
     if ventana_reporte_salidas_espera and ventana_reporte_salidas_espera.winfo_exists():
-        ventana_reporte_salidas_espera.lift()  # Traer la ventana al frente
+        ventana_reporte_salidas_espera.lift()
+        
         actualizar_tabla_salidas_espera()
+        
         return
 
     ventana_reporte_salidas_espera = tk.Toplevel(ventana)
     ventana_reporte_salidas_espera.title("Reporte de Salidas en Espera")
     ventana_reporte_salidas_espera.geometry("700x500")
-    ventana_reporte_salidas_espera.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+    ventana_reporte_salidas_espera.configure(bg="#A9A9A9")
 
     # --- Estilos ttk Personalizados ---
     style = ttk.Style(ventana_reporte_salidas_espera)
@@ -1582,20 +1547,20 @@ def generar_reporte_salidas_espera():
     scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=10)
     tabla_salidas_espera.configure(yscrollcommand=scrollbar_vertical.set)
 
+    print(f"Contenido de salidas_espera al generar el reporte (inicial): {salidas_espera}")
 
-    datos_reporte = [] # Lista para almacenar los datos del reporte
+    datos_reporte = []
     for salida in salidas_espera:
         tabla_salidas_espera.insert("", tk.END, values=(
             salida.get("codigo_producto", "N/A"),
-            salida["producto"],
-            salida["cantidad"],
-            salida["departamento"]
+            salida.get("producto", "N/A"),
+            salida.get("cantidad", "N/A"),
+            salida.get("departamento", "N/A")
         ))
-        datos_reporte.append({"Código": salida.get("codigo_producto", "N/A"), "Producto": salida["producto"], "Cantidad": salida["cantidad"], "Departamento": salida["departamento"]})
+        datos_reporte.append({"Código": salida.get("codigo_producto", "N/A"), "Producto": salida.get("producto", "N/A"), "Cantidad": salida.get("cantidad", "N/A"), "Departamento": salida.get("departamento", "N/A")})
 
     # Insertar datos iniciales en la tabla
     actualizar_tabla_salidas_espera()
-
     # Función para agregar número de requisición
     def agregar_requisicion():
         item_seleccionado = tabla_salidas_espera.selection()
@@ -1775,8 +1740,8 @@ def generar_reporte_salidas_espera():
     ventana_reporte_salidas_espera.grid_columnconfigure(0, weight=1)
     ventana_reporte_salidas_espera.grid_rowconfigure(0, weight=1)
 
-    datos_reportes_para_guardar["Salidas en Espera"] = [{"Código": salida.get("codigo_producto", "N/A"), "Producto": salida["producto"], "Cantidad": salida["cantidad"], "Departamento": salida["departamento"]} for salida in salidas_espera]
-    
+    datos_reportes_para_guardar["Salidas en Espera"] = [{"Código": salida.get("codigo_producto", "N/A"), "producto": salida.get("producto", "N/A"), "cantidad": salida.get("cantidad", "N/A"), "departamento": salida.get("departamento", "N/A")} for salida in salidas_espera]
+
 
 
 def ventana_reportes():
@@ -1909,7 +1874,7 @@ def ventana_reportes():
     label_fecha_fin_seleccionada_dep = ttk.Label(frame_filtros, text="Fin: --", style="CustomLabel.TLabel")
     label_fecha_fin_seleccionada_dep.grid(row=1, column=5, padx=5, pady=5, sticky="w")
 
-    # --- Filtro por Stock Dinámico ---
+    
     label_stock = ttk.Label(frame_filtros, text="Filtrar por Stock:", style="CustomLabel.TLabel")
     label_stock.grid(row=2, column=0, padx=5, pady=5, sticky="w")
     opciones_stock = ["Todos", "Bajo Stock (<= 2)", "Stock Medio (3-10)", "Stock Alto (>= 11)"]
@@ -1917,18 +1882,26 @@ def ventana_reportes():
     stock_seleccionado.grid(row=2, column=1, padx=5, pady=5, sticky="ew")
     stock_seleccionado.set("Todos")
 
-   
-
-    
     global tabla_reporte
     tabla_reporte = ttk.Treeview(frame_tabla, style="Grid.Treeview")
     tabla_reporte.pack(fill="both", expand=True)
 
     def limpiar_tabla_reporte():
         tabla_reporte.delete(*tabla_reporte.get_children())
+        categoria_seleccionada.set("Todas")
+        departamento_seleccionado.set("Todos")
+        stock_seleccionado.set("Todos")
+        fecha_inicio_cat.set("")
+        fecha_fin_cat.set("")
+        label_fecha_inicio_seleccionada_cat.config(text="Inicio: --")
+        label_fecha_fin_seleccionada_cat.config(text="Fin: --")
+        fecha_inicio_dep.set("")
+        fecha_fin_dep.set("")
+        label_fecha_inicio_seleccionada_dep.config(text="Inicio: --")
+        label_fecha_fin_seleccionada_dep.config(text="Fin: --")
 
     boton_limpiar = ttk.Button(frame_tabla, text="Limpiar", command=limpiar_tabla_reporte, style="Small.TButton")
-    boton_limpiar.pack(side="bottom", anchor="se", padx=10, pady=10) # Abajo a la derecha
+    boton_limpiar.pack(side="bottom", anchor="se", padx=10, pady=10)
 
     def generar_reporte():
         categoria = categoria_seleccionada.get()
@@ -1937,7 +1910,7 @@ def ventana_reportes():
         fecha_fin_cat_str = fecha_fin_cat.get()
         fecha_inicio_dep_str = fecha_inicio_dep.get()
         fecha_fin_dep_str = fecha_fin_dep.get()
-        stock = stock_seleccionado.get() # Obtener el valor del Combobox de stock
+        stock = stock_seleccionado.get() 
 
         if departamento != "Todos":
             generar_reporte_departamento(departamento, categoria, fecha_inicio_dep_str, fecha_fin_dep_str, tabla_reporte, ventana_reporte, stock)
@@ -1951,11 +1924,11 @@ def ventana_reportes():
     boton_pdf.grid(row=2, column=0, pady=10)
     boton_pdf.anchor(tk.CENTER)
 
-    # Configuración de pesos para el frame de filtros para que se expanda con la ventana
+   
     for i in range(6):
         frame_filtros.grid_columnconfigure(i, weight=1)
 
-    # Configuración de pesos para el frame de la tabla para que se expanda
+    
     frame_tabla.grid_columnconfigure(0, weight=1)
 
 def generar_reporte_consumo_lapso_filtrado(categoria_filtro, fecha_inicio_str, fecha_fin_str, departamento, stock_filtro_texto, tabla, ventana):
@@ -1985,7 +1958,7 @@ def generar_reporte_consumo_lapso_filtrado(categoria_filtro, fecha_inicio_str, f
             tabla.heading("#1", text="Categoría")
             tabla.column("#1", minwidth=100, stretch=tk.YES)
             tabla.heading("#2", text="Producto")
-            tabla.column("#2", minwidth=150, stretch=tk.YES)
+            tabla.column("#2", minwidth=250, stretch=tk.YES)
             tabla.heading("#3", text="Cantidad Consumida")
             tabla.column("#3", minwidth=100, stretch=tk.YES)
             tabla.heading("#4", text="Lapso")
@@ -1994,13 +1967,18 @@ def generar_reporte_consumo_lapso_filtrado(categoria_filtro, fecha_inicio_str, f
             tabla.column("#5", minwidth=100, stretch=tk.YES)
 
             consumo_por_producto = {}
+            inventario_minusculas = {k.lower(): v for k, v in inventario.items()} 
+
             for salida in salidas_departamentos:
                 try:
                     fecha_salida = datetime.datetime.strptime(salida["fecha"], "%Y-%m-%d").date()
-                    producto_salida = salida["producto"]
+                    
+                    producto_codigo = salida.get("codigo_producto", "").lower()
                     cantidad_salida = salida["cantidad"]
-                    categoria_producto = inventario.get(producto_salida, {}).get("categoria")
-                    stock_actual = inventario.get(producto_salida, {}).get("stock", 0)
+                    categoria_producto = inventario_minusculas.get(producto_codigo, {}).get("categoria")
+                    stock_actual = inventario_minusculas.get(producto_codigo, {}).get("stock", 0)
+                    nombre_producto = inventario_minusculas.get(producto_codigo, {}).get("nombre", "N/A")
+                    producto_display = f"{nombre_producto} ({producto_codigo.upper()})" # Mostrar nombre y código en mayúsculas
 
                     if categoria_filtro != "Todas" and categoria_filtro != categoria_producto:
                         continue
@@ -2010,16 +1988,18 @@ def generar_reporte_consumo_lapso_filtrado(categoria_filtro, fecha_inicio_str, f
                         continue
                     if fecha_fin and fecha_salida > fecha_fin:
                         continue
-                    consumo_por_producto[producto_salida] = consumo_por_producto.get(producto_salida, 0) + int(cantidad_salida)
+                    consumo_por_producto[producto_codigo] = consumo_por_producto.get(producto_codigo, 0) + int(cantidad_salida)
 
                 except ValueError:
                     print(f"Error al procesar fecha de salida: {salida.get('fecha')}")
 
-            for producto, cantidad in consumo_por_producto.items():
-                categoria_prod = inventario.get(producto, {}).get("categoria", "N/A")
-                stock_prod = inventario.get(producto, {}).get("stock", "N/A")
+            for producto_codigo, cantidad in consumo_por_producto.items():
+                categoria_prod = inventario_minusculas.get(producto_codigo, {}).get("categoria", "N/A")
+                stock_prod = inventario_minusculas.get(producto_codigo, {}).get("stock", "N/A")
+                nombre_prod = inventario_minusculas.get(producto_codigo, {}).get("nombre", "N/A")
+                producto_display = f"{nombre_prod} ({producto_codigo.upper()})" # Mostrar nombre y código en mayúsculas
                 if stock_filtro_texto == "Todos" or (stock_filtro_condicion and stock_filtro_condicion(stock_prod)):
-                    tabla.insert("", tk.END, values=(categoria_prod, producto, cantidad, lapso_texto, stock_prod))
+                    tabla.insert("", tk.END, values=(categoria_prod, producto_display, cantidad, lapso_texto, stock_prod))
 
         except ValueError:
             messagebox.showerror("Error de Fecha", "Formato de fecha incorrecto.", parent=ventana)
@@ -2030,18 +2010,19 @@ def generar_reporte_consumo_lapso_filtrado(categoria_filtro, fecha_inicio_str, f
         tabla.heading("#1", text="Categoría")
         tabla.column("#1", minwidth=100, stretch=tk.YES)
         tabla.heading("#2", text="Producto")
-        tabla.column("#2", minwidth=150, stretch=tk.YES)
+        tabla.column("#2", minwidth=250, stretch=tk.YES)
         tabla.heading("#3", text="Stock")
         tabla.column("#3", minwidth=70, stretch=tk.YES)
         tabla.heading("#4", text="Unidad Medida")
         tabla.column("#4", minwidth=100, stretch=tk.YES)
 
-        for producto_inventario, datos in inventario.items():
+        for producto_codigo, datos in inventario.items():
             if categoria_filtro == "Todas" or datos["categoria"] == categoria_filtro:
-                if departamento == "Todos" or datos.get("departamento", "N/A") == departamento:
-                    stock_actual = datos.get("stock", 0)
-                    if stock_filtro_texto == "Todos" or (stock_filtro_condicion and stock_filtro_condicion(stock_actual)):
-                        tabla.insert("", tk.END, values=(datos["categoria"], producto_inventario, datos["stock"], datos["unidad_medida"]))
+                stock_actual = datos.get("stock", 0)
+                nombre_prod = datos.get("nombre", "N/A")
+                producto_display = f"{producto_codigo} - {nombre_prod}"
+                if stock_filtro_texto == "Todos" or (stock_filtro_condicion and stock_filtro_condicion(stock_actual)):
+                    tabla.insert("", tk.END, values=(datos["categoria"], producto_display, datos["stock"], datos["unidad_medida"]))
 
 def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_inicio_str, fecha_fin_str, tabla, ventana, stock_filtro_texto):
     """Genera un reporte de consumo por departamento y lapso, filtrado por categoría y stock."""
@@ -2052,6 +2033,7 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
     fecha_fin = None
     lapso_texto = ""
     stock_filtro_condicion = None
+    inventario_minusculas = {k.lower(): v for k, v in inventario.items()} # Inicializar aquí
 
     if stock_filtro_texto == "Bajo Stock (<= 2)":
         stock_filtro_condicion = lambda stock: stock <= 2
@@ -2066,7 +2048,7 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
             fecha_fin = datetime.datetime.strptime(fecha_fin_str, "%Y-%m-%d").date()
             lapso_texto = f"{fecha_inicio.strftime('%Y-%m-%d')} al {fecha_fin.strftime('%Y-%m-%d')}"
 
-            # --- Reporte de Salidas por Departamento y Lapso (incluyendo Producto y filtro de stock) ---
+            #  Reporte de Salidas por Departamento y Lapso (incluyendo Producto y filtro de stock) 
             tabla["columns"] = ("Departamento", "Producto", "Categoría", "Cantidad", "Lapso", "Stock Actual")
             tabla.heading("#1", text="Departamento")
             tabla.column("#1", minwidth=150, stretch=tk.YES)
@@ -2076,7 +2058,7 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
             tabla.column("#3", minwidth=100, stretch=tk.YES)
             tabla.heading("#4", text="Cantidad")
             tabla.column("#4", minwidth=100, stretch=tk.YES)
-            tabla.heading("#5", text="Lapso")  # Cambiamos "Fecha Salida" por "Lapso"
+            tabla.heading("#5", text="Lapso")  
             tabla.column("#5", minwidth=200, stretch=tk.YES)
             tabla.heading("#6", text="Stock Actual")
             tabla.column("#6", minwidth=100, stretch=tk.YES)
@@ -2085,10 +2067,13 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
                 try:
                     fecha_salida_obj = datetime.datetime.strptime(salida["fecha"], "%Y-%m-%d").date()
                     producto_salida = salida["producto"]
+                    codigo_producto = salida.get("codigo_producto", "").lower() 
                     cantidad_salida = salida["cantidad"]
-                    categoria_producto = inventario.get(producto_salida, {}).get("categoria")
+                    categoria_producto = inventario_minusculas.get(codigo_producto, {}).get("categoria")
                     departamento_salida = salida.get("destino")
-                    stock_actual = inventario.get(producto_salida, {}).get("stock", 0)
+                    stock_actual = inventario_minusculas.get(codigo_producto, {}).get("stock", 0)
+                    nombre_producto = inventario_minusculas.get(codigo_producto, {}).get("nombre", "N/A")
+                    producto_display = f"{nombre_producto} ({codigo_producto.upper()})"
 
                     if departamento_salida == departamento_filtro:
                         if categoria_filtro == "Todas" or categoria_producto == categoria_filtro:
@@ -2097,7 +2082,7 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
                             if fecha_fin and fecha_salida_obj > fecha_fin:
                                 continue
                             if stock_filtro_texto == "Todos" or (stock_filtro_condicion and stock_filtro_condicion(stock_actual)):
-                                tabla.insert("", tk.END, values=(departamento_salida, producto_salida, categoria_producto, cantidad_salida, lapso_texto, stock_actual)) # Usamos lapso_texto aquí
+                                tabla.insert("", tk.END, values=(departamento_salida, producto_display, categoria_producto, cantidad_salida, lapso_texto, stock_actual)) 
 
                 except ValueError:
                     print(f"Error al procesar fecha de salida: {salida.get('fecha')}")
@@ -2107,7 +2092,7 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
             return
 
     else:
-        # --- Reporte de Consumo Total por Departamento (sin lapso, incluyendo Producto y filtro de stock) ---
+        # Reporte de Consumo Total por Departamento (sin lapso, incluyendo Producto y filtro de stock) 
         tabla["columns"] = ("Departamento", "Producto", "Categoría", "Cantidad Consumida", "Stock Actual")
         tabla.heading("#1", text="Departamento")
         tabla.column("#1", minwidth=150, stretch=tk.YES)
@@ -2123,10 +2108,12 @@ def generar_reporte_departamento(departamento_filtro, categoria_filtro, fecha_in
         consumo_por_producto = {}
         for salida in salidas_departamentos:
             departamento_salida = salida.get("destino")
-            categoria_producto = inventario.get(salida["producto"], {}).get("categoria", "N/A")
-            producto_salida = salida["producto"]
+            codigo_producto = salida.get("codigo_producto", "").lower() # Obtener código y convertir a minúsculas
+            categoria_producto = inventario_minusculas.get(codigo_producto, {}).get("categoria", "N/A")
+            nombre_producto = inventario_minusculas.get(codigo_producto, {}).get("nombre", "N/A")
+            producto_salida = f"{nombre_producto} ({codigo_producto.upper()})"
             cantidad_salida = salida["cantidad"]
-            stock_actual = inventario.get(salida["producto"], {}).get("stock", 0)
+            stock_actual = inventario_minusculas.get(codigo_producto, {}).get("stock", 0)
 
             if departamento_salida == departamento_filtro:
                 try:
@@ -2148,10 +2135,10 @@ class PDFConMembrete(FPDF):
         super().__init__(*args, **kwargs)
         self.membrete_superior_altura = 20
         self.membrete_inferior_altura = 15
-        self.margen_horizontal = 5  # Reducimos aún más los márgenes horizontales
+        self.margen_horizontal = 5  
         self.espacio_entre_tabla_y_membrete = 15
         self.altura_encabezados = 10
-        self.altura_fila = 7  # Reducimos ligeramente la altura de la fila
+        self.altura_fila = 7  
         self.y_despues_membrete_superior = 5 + self.membrete_superior_altura + self.espacio_entre_tabla_y_membrete
         self.filas_por_pagina = self.calcular_filas_por_pagina()
 
@@ -2199,16 +2186,16 @@ class PDFConMembrete(FPDF):
 
     def print_encabezados_tabla(self, headers, col_widths, x_start):
         self.set_x(x_start)
-        self.set_font("Arial", 'B', 8)  # Reducimos también la fuente del encabezado
+        self.set_font("Arial", 'B', 8)  
         self.set_fill_color(200, 220, 255)
         self.set_text_color(0, 0, 0)
         for i, header in enumerate(headers):
-            self.cell(col_widths[i], 8, txt=header, border=1, align='C', fill=True)  # Reducimos la altura del encabezado
+            self.cell(col_widths[i], 8, txt=header, border=1, align='C', fill=True)  
         self.ln()
 
 
 def exportar_tabla_pdf(tabla_treeview):
-    """Exporta los datos del Treeview a un PDF con membrete según el diseño."""
+    """Exporta los datos del Treeview a un PDF con membrete según el diseño y lo abre en el navegador."""
 
     filename = filedialog.asksaveasfilename(
         defaultextension=".pdf",
@@ -2224,11 +2211,11 @@ def exportar_tabla_pdf(tabla_treeview):
     pdf.set_font("Arial", size=7)
     pdf.add_page()
 
-    # --- Configuración de Anchos de Columna Dinámica Basada en Encabezados Comunes ---
+    #  Configuración de Anchos de Columna 
     cols = tabla_treeview["columns"]
     headers = [tabla_treeview.heading(col)["text"] for col in cols]
     available_width = pdf.w - pdf.l_margin - pdf.r_margin
-    lapso_width_fixed = 50  # Mantenemos un ancho fijo para "Lapso"
+    lapso_width_fixed = 50  
     col_widths = []
 
     new_headers = list(headers)
@@ -2241,21 +2228,21 @@ def exportar_tabla_pdf(tabla_treeview):
 
     if tuple(new_headers) == ("Departamento", "Producto", "Categoría", "Cantidad", "Lapso", "Stock"):
         col_widths = [
-            available_width * 0.15,  # Departamento
-            available_width * 0.30,  # Producto
-            available_width * 0.15,  # Categoría
-            available_width * 0.10,  # Cantidad
-            lapso_width_fixed,       # Lapso
-            available_width * 0.10,  # Stock
+            available_width * 0.15,  
+            available_width * 0.30,  
+            available_width * 0.15, 
+            available_width * 0.10,  
+            lapso_width_fixed,      
+            available_width * 0.10,  
         ]
     elif tuple(new_headers) == ("Categoría", "Producto", "Cantidad", "Lapso", "Stock"):
         remaining_width = available_width - lapso_width_fixed
         col_widths = [
-            remaining_width * 0.15,  # Categoría (Mismo ancho que Departamento)
-            remaining_width * 0.30,  # Producto (Mismo ancho)
-            remaining_width * 0.10,  # Cantidad (Mismo ancho)
-            lapso_width_fixed,       # Lapso (Mismo ancho fijo)
-            remaining_width * 0.10,  # Stock (Mismo ancho)
+            remaining_width * 0.15,  
+            remaining_width * 0.30,  
+            remaining_width * 0.10, 
+            lapso_width_fixed,      
+            remaining_width * 0.10,  
         ]
     else:
         # Configuración de anchos por defecto si no coinciden los encabezados esperados
@@ -2294,7 +2281,14 @@ def exportar_tabla_pdf(tabla_treeview):
     pdf.output(filename, "F")
     messagebox.showinfo("Exportar a PDF", "Reporte exportado exitosamente a PDF.", parent=tabla_treeview)
 
-
+   
+    try:
+        os.startfile(filename)  
+    except AttributeError:
+        try:
+            os.system(f"open '{filename}'") 
+        except:
+            os.system(f"xdg-open '{filename}'")  
 
 
 
@@ -2314,12 +2308,11 @@ def exportar_tabla_pdf(tabla_treeview):
 
                             # Función para configurar la aplicación
 def configuracion():
-    """Abre una ventana de configuración para ajustar unidades de medida y umbrales."""
+    """Abre una ventana de configuración para ajustar notificaciones y tema de color."""
     ventana_config = tk.Toplevel(ventana)
     ventana_config.title("Configuración")
     ventana_config.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
 
-    # --- Estilos ttk Personalizados ---
     style = ttk.Style(ventana_config)
     style.theme_use('clam')
     style.configure("CustomLabel.TLabel", foreground="#ffffff", background="#A9A9A9", font=("Segoe UI", 10, "bold"))
@@ -2329,58 +2322,44 @@ def configuracion():
     style.configure("TButton", font=("Segoe UI", 10))
     style.configure("TFrame", background="#A9A9A9") # Estilo para los frames
 
-    # Variables para almacenar la configuración
-    formato_fecha_var = tk.StringVar(ventana_config)
     notificaciones_var = tk.IntVar(ventana_config)
     tema_color_var = tk.StringVar(ventana_config)
+    
 
-    # Cargar configuración actual (si existe)
     try:
         with open("configuracion.json", "r") as archivo_config:
             configuracion = json.load(archivo_config)
-            formato_fecha_var.set(configuracion.get("formato_fecha", "YYYY-MM-DD"))
             notificaciones_var.set(configuracion.get("notificaciones", 0))
             tema_color_var.set(configuracion.get("tema_color", "Claro"))
     except FileNotFoundError:
-        # Configuración predeterminada si no existe el archivo
-        formato_fecha_var.set("YYYY-MM-DD")
         notificaciones_var.set(0)
         tema_color_var.set("Claro")
 
-    # Marco principal para centrar el contenido
     main_frame = ttk.Frame(ventana_config, style="TFrame")
     main_frame.pack(padx=20, pady=20, fill="both", expand=True)
     main_frame.grid_columnconfigure(0, weight=1)
 
-    # Marco para los controles de configuración
     config_frame = ttk.Frame(main_frame, style="TFrame")
     config_frame.grid(row=0, column=0, sticky="ew", padx=10, pady=10)
     config_frame.columnconfigure(0, weight=1)
     config_frame.columnconfigure(1, weight=1)
 
-    # Interfaz de configuración
-    label_formato_fecha = ttk.Label(config_frame, text="Formato de Fecha:", style="CustomLabel.TLabel")
-    label_formato_fecha.grid(row=0, column=0, sticky="w", padx=5, pady=5)
-    formatos_fecha = ["YYYY-MM-DD", "DD-MM-YYYY", "MM/DD/YYYY"]
-    combo_formato_fecha = ttk.Combobox(config_frame, textvariable=formato_fecha_var, values=formatos_fecha, style="TCombobox")
-    combo_formato_fecha.grid(row=0, column=1, sticky="ew", padx=5, pady=5)
-
     check_notificaciones = ttk.Checkbutton(config_frame, text="Notificaciones de Bajo Stock", variable=notificaciones_var, style="TCheckbutton")
-    check_notificaciones.grid(row=1, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+    check_notificaciones.grid(row=0, column=0, columnspan=2, sticky="w", padx=5, pady=5)
 
     label_tema_color = ttk.Label(config_frame, text="Tema de Color:", style="CustomLabel.TLabel")
-    label_tema_color.grid(row=2, column=0, sticky="w", padx=5, pady=5)
-    temas_color = ["Claro", "Oscuro", "Azul", "Verde", "Rojo", "Amarillo", "Morado"]
+    label_tema_color.grid(row=1, column=0, sticky="w", padx=5, pady=5)
+    temas_color = ["Claro", "Oscuro", "Azul", "Verde", "Rojo", "Amarillo", "Morado",
+                    "Naranja", "Rosa", "Cian", "Magenta", "Gris Claro", "Gris Oscuro",
+                    "Oliva", "Teal", "Índigo", "Violeta", "Salmón", "Lima"] # Muchos más colores
     combo_tema_color = ttk.Combobox(config_frame, textvariable=tema_color_var, values=temas_color, style="TCombobox")
-    combo_tema_color.grid(row=2, column=1, sticky="ew", padx=5, pady=5)
+    combo_tema_color.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
 
-    # Marco para los botones de copia de seguridad y restaurar
     backup_restore_frame = ttk.Frame(main_frame, style="TFrame")
     backup_restore_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
     backup_restore_frame.columnconfigure(0, weight=1)
     backup_restore_frame.columnconfigure(1, weight=1)
 
-    # Botón "Copia de Seguridad"
     def realizar_copia_seguridad():
         try:
             fecha_hora = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2393,7 +2372,6 @@ def configuracion():
     btn_copia_seguridad = ttk.Button(backup_restore_frame, text="Copia de Seguridad", command=realizar_copia_seguridad)
     btn_copia_seguridad.grid(row=0, column=0, pady=5, padx=5, sticky="ew")
 
-    # Botón "Restaurar"
     def restaurar_copia_seguridad():
         try:
             archivos_copia_seguridad = [f for f in os.listdir() if f.startswith("inventario_backup_")]
@@ -2450,7 +2428,6 @@ def configuracion():
     btn_restaurar = ttk.Button(backup_restore_frame, text="Restaurar", command=restaurar_copia_seguridad)
     btn_restaurar.grid(row=0, column=1, pady=5, padx=5, sticky="ew")
 
-    # Botón "Gestión de Usuarios"
     def gestionar_usuarios():
         ventana_usuarios = tk.Toplevel(ventana_config)
         ventana_usuarios.title("Gestión de Usuarios")
@@ -2459,10 +2436,10 @@ def configuracion():
         label_usuarios = ttk.Label(ventana_usuarios, text="Usuarios:", style="CustomLabel.TLabel")
         label_usuarios.pack(pady=5, padx=10)
 
-        lista_usuarios = tk.Listbox(ventana_usuarios, bg="#ffffff", fg="#000000")
-        for usuario in usuarios:
-            lista_usuarios.insert(tk.END, usuario)
-        lista_usuarios.pack(padx=10, pady=5, fill="both", expand=True)
+        global lista_usuarios_widget
+        lista_usuarios_widget = tk.Listbox(ventana_usuarios, bg="#ffffff", fg="#000000")
+        actualizar_lista_usuarios()
+        lista_usuarios_widget.pack(padx=10, pady=5, fill="both", expand=True)
 
         frame_crear_usuario = ttk.Frame(ventana_usuarios, style="TFrame")
         frame_crear_usuario.pack(pady=5, padx=10, fill="x")
@@ -2479,7 +2456,6 @@ def configuracion():
         entry_contrasena.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
 
         def verificar_codigo_administrador(codigo):
-            """Verifica si el código de administrador es correcto."""
             return hashlib.sha256(codigo.encode()).hexdigest() == clave_admin
 
         def crear_usuario():
@@ -2489,10 +2465,12 @@ def configuracion():
             if codigo_admin and verificar_codigo_administrador(codigo_admin):
                 if nombre and contrasena:
                     usuarios[nombre] = hashlib.sha256(contrasena.encode()).hexdigest()
-                    lista_usuarios.insert(tk.END, nombre)
+                    
+                    actualizar_lista_usuarios()
                     messagebox.showinfo("Usuario Creado", f"Usuario '{nombre}' creado.", parent=ventana_usuarios)
                     entry_nombre.delete(0, tk.END)
                     entry_contrasena.delete(0, tk.END)
+                    guardar_datos() 
                 else:
                     messagebox.showerror("Error", "Ingrese nombre y contraseña.", parent=ventana_usuarios)
             else:
@@ -2502,12 +2480,16 @@ def configuracion():
         btn_crear_usuario.pack(pady=5, padx=10, fill="x")
 
         def eliminar_usuario():
-            seleccion = lista_usuarios.curselection()
+            seleccion = lista_usuarios_widget.curselection()
             if seleccion:
-                usuario_seleccionado = lista_usuarios.get(seleccion[0])
+                usuario_seleccionado = lista_usuarios_widget.get(seleccion[0])
+                if usuario_seleccionado == "admin":
+                    messagebox.showerror("Error", "No se puede eliminar el usuario administrador.", parent=ventana_usuarios)
+                    return
                 del usuarios[usuario_seleccionado]
-                lista_usuarios.delete(seleccion[0])
+                actualizar_lista_usuarios()
                 messagebox.showinfo("Usuario Eliminado", f"Usuario '{usuario_seleccionado}' eliminado.", parent=ventana_usuarios)
+                guardar_datos() # Guardar después de eliminar un usuario
             else:
                 messagebox.showerror("Error", "Seleccione un usuario.", parent=ventana_usuarios)
 
@@ -2517,10 +2499,8 @@ def configuracion():
     btn_gestion_usuarios = ttk.Button(main_frame, text="Gestión de Usuarios", command=gestionar_usuarios)
     btn_gestion_usuarios.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
 
-    # Botón "Aceptar" al final y separado
     def guardar_configuracion():
         configuracion = {
-            "formato_fecha": formato_fecha_var.get(),
             "notificaciones": notificaciones_var.get(),
             "tema_color": tema_color_var.get(),
         }
@@ -2528,12 +2508,17 @@ def configuracion():
             json.dump(configuracion, archivo_config)
         messagebox.showinfo("Configuración Guardada", "La configuración se ha guardado correctamente.", parent=ventana_config)
         ventana_config.destroy()
-        aplicar_tema_color(tema_color_var.get())  # Aplicar el tema de color seleccionado
-        if notificaciones_var.get():
-            mostrar_notificacion_bajo_stock()  # Mostrar notificación si las notificaciones están activadas
+       
 
     btn_aceptar = ttk.Button(main_frame, text="Aceptar", command=guardar_configuracion)
     btn_aceptar.grid(row=3, column=0, sticky="ew", padx=10, pady=10)
+
+def actualizar_lista_usuarios():
+    """Actualiza la lista de usuarios en la ventana de gestión de usuarios."""
+    if 'lista_usuarios_widget' in globals():
+        lista_usuarios_widget.delete(0, tk.END)
+        for usuario in usuarios:
+            lista_usuarios_widget.insert(tk.END, usuario)
 
 # Función para aplicar el tema de color
 def aplicar_tema_color(tema):
@@ -2541,11 +2526,35 @@ def aplicar_tema_color(tema):
     colores_tema = {
         "Claro": {"bg": "white", "fg": "black"},
         "Oscuro": {"bg": "#333333", "fg": "white"},
-        "Azul": {"bg": "#E8F5E9", "fg": "black"},
-        "Verde": {"bg": "#E8F5E9", "fg": "black"},
-        "Rojo": {"bg": "#FFEBEE", "fg": "black"},
-        "Amarillo": {"bg": "#FFFDE7", "fg": "black"},
-        "Morado": {"bg": "#F3E5F5", "fg": "black"}
+        "Azul": {"bg": "#E3F2FD", "fg": "#1976D2"},
+        "Verde": {"bg": "#E8F5E9", "fg": "#388E3C"},
+        "Rojo": {"bg": "#FFEBEE", "fg": "#D32F2F"},
+        "Amarillo": {"bg": "#FFFDE7", "fg": "#F9A825"},
+        "Morado": {"bg": "#F3E5F5", "fg": "#8E24AA"},
+        "Naranja": {"bg": "#FFE0B2", "fg": "#F57C00"},
+        "Rosa": {"bg": "#FCE4EC", "fg": "#C2185B"},
+        "Cian": {"bg": "#E0F7FA", "fg": "#00ACC1"},
+        "Magenta": {"bg": "#F3E0E9", "fg": "#AD1457"},
+        "Gris Claro": {"bg": "#F5F5F5", "fg": "#424242"},
+         "Gris Oscuro": {"bg": "#424242", "fg": "#E0E0E0"},
+        "Oliva": {"bg": "#F0F4C3", "fg": "#827717"},
+        "Teal": {"bg": "#B2DFDB", "fg": "#00796B"},
+        "Índigo": {"bg": "#C5CAE9", "fg": "#3F51B5"},
+        "Violeta": {"bg": "#EDE7F6", "fg": "#5E35B1"},
+        "Salmón": {"bg": "#FFDDC0", "fg": "#E64A19"},
+        "Lima": {"bg": "#F0F4C3", "fg": "#AFB42B"},
+        "Menta": {"bg": "#E0F2F1", "fg": "#009688"},
+        "Turquesa": {"bg": "#B2EBF2", "fg": "#0097A7"},
+        "Bronce": {"bg": "#D7CCC8", "fg": "#795548"},
+        "Dorado": {"bg": "#FFF8E1", "fg": "#FFB300"},
+        "Plateado": {"bg": "#ECEFF1", "fg": "#78909C"},
+        "Celeste": {"bg": "#BBDEFB", "fg": "#1E88E5"},
+        "Esmeralda": {"bg": "#A5D6A7", "fg": "#43A047"},
+        "Ambar": {"bg": "#FFECB3", "fg": "#FFA000"},
+        "Beige": {"bg": "#F5F5DC", "fg": "#795548"},
+        "Marfil": {"bg": "#FFFFF0", "fg": "#000000"},
+        "Caqui": {"bg": "#F0E68C", "fg": "#8B4513"},
+        "Coral": {"bg": "#FFDAB9", "fg": "#FF6F00"}
     }
     colores = colores_tema.get(tema, colores_tema["Claro"])  # Usar "Claro" como predeterminado
 
@@ -2695,8 +2704,8 @@ def mostrar_menu():
     ventana.title("Menú Principal")
     ventana.configure(bg="#263238")
 
-    
-    # --- Barra de Menú Superior  ---
+    #
+    # --- Barra de Menú Superior   ---
     menu_principal = tk.Menu(ventana)
     ventana.config(menu=menu_principal)
 
@@ -2737,7 +2746,7 @@ def mostrar_menu():
               background=[('active', '#455a64')],
               foreground=[('active', '#fff')])
 
-    # --- Cargar Logos ---
+    # --- Cargar Logos de los botones ---
     try:
         ventana.logo_agregar_img = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/agregar-producto.png").subsample(3, 3)
         print(f"Cargado logo_agregar: {ventana.logo_agregar_img}") # Debugging
@@ -2782,17 +2791,27 @@ def mostrar_menu():
     boton_mostrar.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
     boton_consumo.grid(row=1, column=1, padx=10, pady=10, sticky="ew")
 
-
+    # --- Cargar y mostrar el logo en la esquina inferior derecha ---
+    try:
+        ventana.logo_app_img = tk.PhotoImage(file="C:/Users/monster/Desktop/src/server/routes/imagenes/NEVA.png").subsample(4, 4) 
+        logo_app_label = tk.Label(ventana, image=ventana.logo_app_img, bd=0, highlightthickness=0, bg="#263238") 
+        logo_app_label.image = ventana.logo_app_img 
+        logo_app_label.place(relx=1.0, rely=1.0, anchor=tk.SE, x=-10, y=-10) 
+    except tk.TclError as e:
+        print(f"Error al cargar el logo de la aplicación: {e}")
 
     # --- Configurar la expansión de las columnas ---
     ventana.grid_columnconfigure(0, weight=1)
     ventana.grid_columnconfigure(1, weight=1)
 
+
     
-    cargar_datos() 
+    
     mostrar_notificacion_bajo_stock()
 
     ventana.mainloop()
 
 # --- Ejecución de la aplicación ---
-mostrar_menu()
+cargar_datos()
+
+iniciar_sesion()
