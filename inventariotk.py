@@ -1594,7 +1594,7 @@ def generar_reporte_salidas_espera():
                     fecha_salida = entry_fecha.get()
 
                     salidas_departamentos.append({
-                        "código": codigo_producto,
+                        "codigo_producto": codigo_producto,
                         "producto": producto,
                         "cantidad": cantidad,
                         "fecha": fecha_salida,
@@ -2363,18 +2363,6 @@ def configuracion():
     style.configure("TButton", font=("Segoe UI", 10))
     style.configure("TFrame", background="#A9A9A9") # Estilo para los frames
 
-    notificaciones_var = tk.IntVar(ventana_config)
-    tema_color_var = tk.StringVar(ventana_config)
-    
-
-    try:
-        with open("configuracion.json", "r") as archivo_config:
-            configuracion = json.load(archivo_config)
-            notificaciones_var.set(configuracion.get("notificaciones", 0))
-            tema_color_var.set(configuracion.get("tema_color", "Claro"))
-    except FileNotFoundError:
-        notificaciones_var.set(0)
-        tema_color_var.set("Claro")
 
     main_frame = ttk.Frame(ventana_config, style="TFrame")
     main_frame.pack(padx=20, pady=20, fill="both", expand=True)
@@ -2385,16 +2373,7 @@ def configuracion():
     config_frame.columnconfigure(0, weight=1)
     config_frame.columnconfigure(1, weight=1)
 
-    check_notificaciones = ttk.Checkbutton(config_frame, text="Notificaciones de Bajo Stock", variable=notificaciones_var, style="TCheckbutton")
-    check_notificaciones.grid(row=0, column=0, columnspan=2, sticky="w", padx=5, pady=5)
-
-    label_tema_color = ttk.Label(config_frame, text="Tema de Color:", style="CustomLabel.TLabel")
-    label_tema_color.grid(row=1, column=0, sticky="w", padx=5, pady=5)
-    temas_color = ["Claro", "Oscuro", "Azul", "Verde", "Rojo", "Amarillo", "Morado",
-                    "Naranja", "Rosa", "Cian", "Magenta", "Gris Claro", "Gris Oscuro",
-                    "Oliva", "Teal", "Índigo", "Violeta", "Salmón", "Lima"] # Muchos más colores
-    combo_tema_color = ttk.Combobox(config_frame, textvariable=tema_color_var, values=temas_color, style="TCombobox")
-    combo_tema_color.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
+    
 
     backup_restore_frame = ttk.Frame(main_frame, style="TFrame")
     backup_restore_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=10)
@@ -2541,13 +2520,8 @@ def configuracion():
     btn_gestion_usuarios.grid(row=2, column=0, sticky="ew", padx=10, pady=10)
 
     def guardar_configuracion():
-        configuracion = {
-            "notificaciones": notificaciones_var.get(),
-            "tema_color": tema_color_var.get(),
-        }
-        with open("configuracion.json", "w") as archivo_config:
-            json.dump(configuracion, archivo_config)
-        messagebox.showinfo("Configuración Guardada", "La configuración se ha guardado correctamente.", parent=ventana_config)
+      
+        
         ventana_config.destroy()
        
 
@@ -2561,47 +2535,7 @@ def actualizar_lista_usuarios():
         for usuario in usuarios:
             lista_usuarios_widget.insert(tk.END, usuario)
 
-# Función para aplicar el tema de color
-def aplicar_tema_color(tema):
-    """Aplica el tema de color seleccionado a la interfaz."""
-    colores_tema = {
-        "Claro": {"bg": "white", "fg": "black"},
-        "Oscuro": {"bg": "#333333", "fg": "white"},
-        "Azul": {"bg": "#E3F2FD", "fg": "#1976D2"},
-        "Verde": {"bg": "#E8F5E9", "fg": "#388E3C"},
-        "Rojo": {"bg": "#FFEBEE", "fg": "#D32F2F"},
-        "Amarillo": {"bg": "#FFFDE7", "fg": "#F9A825"},
-        "Morado": {"bg": "#F3E5F5", "fg": "#8E24AA"},
-        "Naranja": {"bg": "#FFE0B2", "fg": "#F57C00"},
-        "Rosa": {"bg": "#FCE4EC", "fg": "#C2185B"},
-        "Cian": {"bg": "#E0F7FA", "fg": "#00ACC1"},
-        "Magenta": {"bg": "#F3E0E9", "fg": "#AD1457"},
-        "Gris Claro": {"bg": "#F5F5F5", "fg": "#424242"},
-         "Gris Oscuro": {"bg": "#424242", "fg": "#E0E0E0"},
-        "Oliva": {"bg": "#F0F4C3", "fg": "#827717"},
-        "Teal": {"bg": "#B2DFDB", "fg": "#00796B"},
-        "Índigo": {"bg": "#C5CAE9", "fg": "#3F51B5"},
-        "Violeta": {"bg": "#EDE7F6", "fg": "#5E35B1"},
-        "Salmón": {"bg": "#FFDDC0", "fg": "#E64A19"},
-        "Lima": {"bg": "#F0F4C3", "fg": "#AFB42B"},
-        "Menta": {"bg": "#E0F2F1", "fg": "#009688"},
-        "Turquesa": {"bg": "#B2EBF2", "fg": "#0097A7"},
-        "Bronce": {"bg": "#D7CCC8", "fg": "#795548"},
-        "Dorado": {"bg": "#FFF8E1", "fg": "#FFB300"},
-        "Plateado": {"bg": "#ECEFF1", "fg": "#78909C"},
-        "Celeste": {"bg": "#BBDEFB", "fg": "#1E88E5"},
-        "Esmeralda": {"bg": "#A5D6A7", "fg": "#43A047"},
-        "Ambar": {"bg": "#FFECB3", "fg": "#FFA000"},
-        "Beige": {"bg": "#F5F5DC", "fg": "#795548"},
-        "Marfil": {"bg": "#FFFFF0", "fg": "#000000"},
-        "Caqui": {"bg": "#F0E68C", "fg": "#8B4513"},
-        "Coral": {"bg": "#FFDAB9", "fg": "#FF6F00"}
-    }
-    colores = colores_tema.get(tema, colores_tema["Claro"])  # Usar "Claro" como predeterminado
 
-    ventana.config(bg=colores["bg"])
-    for widget in ventana.winfo_children():
-        widget.config(bg=colores["bg"], fg=colores["fg"])
 
 def mostrar_notificacion_bajo_stock():
     """Muestra una notificación de advertencia general sobre bajo stock."""
