@@ -43,13 +43,26 @@ datos_reportes_para_guardar = {
 
 def guardar_datos():
     """Guarda los datos en un archivo JSON."""
-    global datos_consumo_para_guardar, datos_reportes_para_guardar, usuarios
+    global datos_consumo_para_guardar, datos_reportes_para_guardar, usuarios, entradas_departamentos # Asegúrate de incluir entradas_departamentos
+
+    # Actualiza datos_reportes_para_guardar["Entradas"] antes de guardar
+    datos_reportes_para_guardar["Entradas"] = [
+        {
+            "Código": entrada.get("Código", "N/A"),
+            "Producto": entrada.get("Producto", "N/A"),
+            "Cantidad": entrada.get("Cantidad", "N/A"),
+            "Fecha": entrada.get("Fecha", "N/A").isoformat() if isinstance(entrada.get("Fecha"), datetime.date) else str(entrada.get("Fecha", "N/A")),
+            "Destino": entrada.get("Destino", "N/A")
+        }
+        for entrada in entradas_departamentos
+    ]
+
     datos = {
         "inventario": {
             producto: {
                 **datos_prod,
-                "fecha_entrada": datos_prod["fecha_entrada"].isoformat() if isinstance(datos_prod["fecha_entrada"], datetime.date) else None if datos_prod["fecha_entrada"] is None or datos_prod["fecha_entrada"] == "null" else str(datos_prod["fecha_entrada"]),
-                "fecha_salida": datos_prod["fecha_salida"].isoformat() if isinstance(datos_prod["fecha_salida"], datetime.date) else None if datos_prod["fecha_salida"] is None or datos_prod["fecha_salida"] == "null" else str(datos_prod["fecha_salida"])
+                "fecha_entrada": datos_prod["fecha_entrada"].isoformat() if isinstance(datos_prod["fecha_entrada"], datetime.date) else None if datos_prod["fecha_entrada"] is None or str(datos_prod["fecha_entrada"]).lower() == "null" or str(datos_prod["fecha_entrada"]).lower() == "none" else str(datos_prod["fecha_entrada"]),
+                "fecha_salida": datos_prod["fecha_salida"].isoformat() if isinstance(datos_prod["fecha_salida"], datetime.date) else None if datos_prod["fecha_salida"] is None or str(datos_prod["fecha_salida"]).lower() == "null" or str(datos_prod["fecha_salida"]).lower() == "none" else str(datos_prod["fecha_salida"])
             }
             for producto, datos_prod in inventario.items()
         },
@@ -81,8 +94,8 @@ def cargar_datos():
             for codigo_producto, datos_producto in datos.get("inventario", {}).items():
                 fecha_entrada = datos_producto.get("fecha_entrada")
                 fecha_salida = datos_producto.get("fecha_salida")
-                fecha_entrada = datetime.date.fromisoformat(fecha_entrada) if fecha_entrada and fecha_entrada != "null" else None
-                fecha_salida = datetime.date.fromisoformat(fecha_salida) if fecha_salida and fecha_salida != "null" else None
+                fecha_entrada = datetime.date.fromisoformat(fecha_entrada) if fecha_entrada and fecha_entrada != "null" and fecha_entrada != "None" else None
+                fecha_salida = datetime.date.fromisoformat(fecha_salida) if fecha_salida and fecha_salida != "null" and fecha_salida != "None" else None
                 inventario[codigo_producto] = {**datos_producto, "fecha_entrada": fecha_entrada, "fecha_salida": fecha_salida}
             usuarios = datos.get("usuarios", {})
             salidas_departamentos = datos.get("salidas_departamentos", [])
@@ -90,6 +103,15 @@ def cargar_datos():
             reportes = datos.get("Reportes", {"Bajo Stock": [], "Entradas": [], "Salidas": [], "Salidas en Espera": []})
             datos_reportes_para_guardar = {"Bajo Stock": reportes.get("Bajo Stock", []), "Entradas": reportes.get("Entradas", []), "Salidas": reportes.get("Salidas", []), "Salidas en Espera": reportes.get("Salidas en Espera", []), "Consumo": datos_consumo_para_guardar}
             entradas_departamentos = datos_reportes_para_guardar.get("Entradas", [])
+            # Convertir las cadenas de fecha de "Entradas" a objetos datetime.date
+            for entrada in entradas_departamentos:
+                fecha_str = entrada.get("Fecha")
+                if isinstance(fecha_str, str) and fecha_str != "N/A":
+                    try:
+                        entrada["Fecha"] = datetime.datetime.strptime(fecha_str, "%Y-%m-%d").date()
+                    except ValueError:
+                        print(f"Error al convertir fecha: {fecha_str}")
+                        entrada["Fecha"] = "N/A"
             salidas_espera = datos_reportes_para_guardar.get("Salidas en Espera", [])
     except FileNotFoundError:
         archivo_existe = False
@@ -130,7 +152,6 @@ def cargar_datos():
         salidas_espera = []
     finally:
         if not archivo_existe or not usuarios:
-            
             usuarios["admin"] = hashlib.sha256("admin".encode()).hexdigest()
             guardar_datos()
         
@@ -335,7 +356,7 @@ def agregar_producto():
             "cantidad": entrada,
             "fecha": fecha_entrada,
             "destino": destino_entrada,
-            "codigo_producto": codigo_producto
+            "código": codigo_producto
         })
 
         guardar_datos()
@@ -495,7 +516,7 @@ def realizar_salida():
             "producto": producto_nombre,
             "cantidad": cantidad,
             "departamento": departamento,
-            "codigo_producto": codigo_producto
+            "código": codigo_producto
         })
 
         messagebox.showinfo("Salida en Espera", f"{cantidad} unidades de '{producto_nombre}' (Código: {codigo_producto if codigo_producto else 'N/A'}) solicitadas para {departamento}. Agregado a la lista de espera.")
@@ -1171,15 +1192,15 @@ def generar_reporte_entradas():
 
    # Insertar datos en la tabla (una sola vez)
     for entrada in entradas_departamentos:
-        fecha_str = entrada.get("Fecha", "N/A") 
+        fecha_str = entrada.get("fecha", "N/A") 
         if isinstance(fecha_str, datetime.date):
             fecha_str = fecha_str.strftime("%Y-%m-%d")
         tabla_entradas.insert("", tk.END, values=(
-            entrada.get("Código", "N/A"),
-            entrada.get("Producto","N/A"), 
-            entrada.get("Cantidad", "N/A"),
+            entrada.get("código", "N/A"),
+            entrada.get("producto","N/A"), 
+            entrada.get("cantidad", "N/A"),
             fecha_str,
-            entrada.get("Destino", "N/A") 
+            entrada.get("destino", "N/A") 
         ))
    
 
@@ -1552,7 +1573,7 @@ def generar_reporte_salidas_espera():
     datos_reporte = []
     for salida in salidas_espera:
         tabla_salidas_espera.insert("", tk.END, values=(
-            salida.get("codigo_producto", "N/A"),
+            salida.get("código", "N/A"),
             salida.get("producto", "N/A"),
             salida.get("cantidad", "N/A"),
             salida.get("departamento", "N/A")
