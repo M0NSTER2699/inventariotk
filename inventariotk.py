@@ -56,6 +56,16 @@ def guardar_datos():
         }
         for entrada in entradas_departamentos
     ]
+    # Actualiza datos_reportes_para_guardar["Salidas en Espera"]
+    datos_reportes_para_guardar["Salidas en Espera"] = [
+        {
+            "código": salida.get("código", "N/A"),  # <-- Usa "Código" (mayúscula)
+            "producto": salida.get("producto", "N/A"),
+            "cantidad": salida.get("cantidad", "N/A"),
+            "departamento": salida.get("departamento", "N/A")
+        }
+        for salida in salidas_espera
+    ]
 
     datos = {
         "inventario": {
@@ -525,10 +535,10 @@ def realizar_salida():
             "producto": producto_nombre,
             "cantidad": cantidad,
             "departamento": departamento,
-            "código": codigo_producto  # <-- Clave consistente: "código" (minúscula)
+            "código": codigo_producto  
         })
 
-        messagebox.showinfo("Salida en Espera", f"{cantidad} unidades de '{producto_nombre}' (Código: {codigo_producto if codigo_producto else 'N/A'}) solicitadas para {departamento}. Agregado a la lista de espera.")
+        messagebox.showinfo("Salida en Espera", f"{cantidad} unidades de '{producto_nombre}' (código: {codigo_producto if codigo_producto else 'N/A'}) solicitadas para {departamento}. Agregado a la lista de espera.")
         ventana_salida_espera.destroy()
         guardar_datos() # Asegúrate de guardar los datos actualizados
 
@@ -586,76 +596,36 @@ def realizar_salida():
 
 
 def mostrar_inventario():
-    """Muestra el inventario con menú desplegable de categorías y búsqueda por abreviatura, y totales."""
+    """Muestra el inventario con menú desplegable de categorías y búsqueda por nombre o código dentro de la categoría."""
 
     ventana_inventario = tk.Toplevel(ventana)
     ventana_inventario.title("Inventario")
     ventana_inventario.geometry("1200x600")
-    ventana_inventario.configure(bg="#A9A9A9")  # Fondo gris oscuro medio
+    ventana_inventario.configure(bg="#A9A9A9")
 
     # --- Estilos ttk Personalizados ---
     style = ttk.Style(ventana_inventario)
     style.theme_use('clam')
-
-    style.configure("CustomLabel.TLabel",
-                    foreground="#ffffff",
-                    background="#A9A9A9",
-                    font=("Segoe UI", 10, "bold"))
-
-    style.configure("TCombobox",
-                    foreground="#000000",
-                    background="#ffffff",
-                    fieldbackground="#ffffff",
-                    insertcolor="#000000",
-                    font=("Segoe UI", 10))
-
-    style.configure("CustomEntry.TEntry",
-                    foreground="#000000",
-                    background="#ffffff",
-                    insertcolor="#000000",
-                    font=("Segoe UI", 10))
-
-    style.configure("CustomButton.TButton",
-                    foreground="#000000",
-                    background="#d9d9d9",
-                    font=("Segoe UI", 10, "bold"),
-                    padding=8,
-                    relief="raised",
-                    anchor="center")
-    style.map("CustomButton.TButton",
-              background=[('active', '#c1c1c1')],
-              foreground=[('active', '#000000')])
-
-    style.configure("Grid.Treeview",
-                    foreground="#000000",
-                    background="#ffffff",
-                    font=("Segoe UI", 10))
-    style.configure("Grid.Treeview.Heading",
-                    foreground="#000000",
-                    background="#d9d9d9",
-                    font=("Segoe UI", 10, "bold"))
-    style.map("Grid.Treeview",
-              background=[('selected', '#bddfff')],
-              foreground=[('selected', '#000000')])
+    style.configure("CustomLabel.TLabel", foreground="#ffffff", background="#A9A9A9", font=("Segoe UI", 10, "bold"))
+    style.configure("TCombobox", foreground="#000000", background="#ffffff", fieldbackground="#ffffff", insertcolor="#000000", font=("Segoe UI", 10))
+    style.configure("CustomEntry.TEntry", foreground="#000000", background="#ffffff", insertcolor="#000000", font=("Segoe UI", 10))
+    style.configure("CustomButton.TButton", foreground="#000000", background="#d9d9d9", font=("Segoe UI", 10, "bold"), padding=8, relief="raised", anchor="center")
+    style.map("CustomButton.TButton", background=[('active', '#c1c1c1')], foreground=[('active', '#000000')])
+    style.configure("Grid.Treeview", foreground="#000000", background="#ffffff", font=("Segoe UI", 10))
+    style.configure("Grid.Treeview.Heading", foreground="#000000", background="#d9d9d9", font=("Segoe UI", 10, "bold"))
+    style.map("Grid.Treeview", background=[('selected', '#bddfff')], foreground=[('selected', '#000000')])
 
     # Frame para los menús desplegables, totales y búsqueda
     frame_menu = tk.Frame(ventana_inventario, bg="#A9A9A9")
     frame_menu.pack(pady=10, padx=10, fill=tk.X)
 
-    # Frame para la búsqueda por abreviatura
+    # Frame para la búsqueda por texto
     frame_busqueda = tk.Frame(frame_menu, bg="#A9A9A9")
     frame_busqueda.pack(side=tk.LEFT, padx=10)
 
     ttk.Label(frame_busqueda, text="Buscar:", style="CustomLabel.TLabel").pack(side=tk.LEFT)
     entry_busqueda = ttk.Entry(frame_busqueda, style="CustomEntry.TEntry")
     entry_busqueda.pack(side=tk.LEFT)
-
-    # Función para buscar productos por nombre (ahora la clave es el código)
-    def buscar_por_abreviatura(event=None):  # Agregamos el argumento event
-        termino_busqueda = entry_busqueda.get().lower()
-        mostrar_tabla(categoria_seleccionada_mostrar.get(), termino_busqueda)
-
-    entry_busqueda.bind("<KeyRelease>", buscar_por_abreviatura)  # Enlazamos el evento KeyRelease
 
     # Menú desplegable de categorías para mostrar
     categorias_mostrar = ["Todas"] + sorted(set(datos["categoria"] for datos in inventario.values()))
@@ -665,13 +635,15 @@ def mostrar_inventario():
     menu_categorias_mostrar = ttk.Combobox(frame_menu, textvariable=categoria_seleccionada_mostrar, values=categorias_mostrar, style="TCombobox")
     menu_categorias_mostrar.pack(side=tk.LEFT, padx=10)
 
-    # Función para mostrar el inventario según la categoría seleccionada
-    def mostrar_por_categoria():
+    # Función para mostrar el inventario según la categoría seleccionada y el término de búsqueda
+    def mostrar_inventario_filtrado(event=None):
         categoria = categoria_seleccionada_mostrar.get()
-        mostrar_tabla(categoria)
+        termino_busqueda = entry_busqueda.get().lower()
+        mostrar_tabla(categoria, termino_busqueda)
 
-    boton_mostrar = ttk.Button(frame_menu, text="Mostrar", command=mostrar_por_categoria, style="CustomButton.TButton")
-    boton_mostrar.pack(side=tk.LEFT, padx=10)
+    # Enlazar el evento de selección de categoría y el evento de escritura en la búsqueda
+    menu_categorias_mostrar.bind("<<ComboboxSelected>>", mostrar_inventario_filtrado)
+    entry_busqueda.bind("<KeyRelease>", mostrar_inventario_filtrado)
 
     # Frame para la tabla de inventario
     frame_tabla = tk.Frame(ventana_inventario, bg="#A9A9A9")
@@ -681,7 +653,7 @@ def mostrar_inventario():
     tabla_productos = ttk.Treeview(frame_tabla, columns=("Código", "Categoría", "Producto", "Destino Entrada", "Destino Salida", "Entrada", "Salida", "Stock", "Unidad Medida", "Fecha Entrada", "Fecha Salida"), show="headings", style="Grid.Treeview")
     tabla_productos.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-    # Definir encabezados de columna (añadimos "Código")
+    # Definir encabezados de columna
     tabla_productos.heading("Código", text="Código", anchor=tk.W)
     tabla_productos.heading("Categoría", text="Categoría", anchor=tk.W)
     tabla_productos.heading("Producto", text="Producto", anchor=tk.W)
@@ -694,7 +666,7 @@ def mostrar_inventario():
     tabla_productos.heading("Fecha Entrada", text="Fecha Entrada", anchor=tk.W)
     tabla_productos.heading("Fecha Salida", text="Fecha Salida", anchor=tk.W)
 
-    # Configurar ancho de columnas (añadimos ancho para "Código")
+    # Configurar ancho de columnas
     tabla_productos.column("Código", width=150)
     tabla_productos.column("Categoría", width=120)
     tabla_productos.column("Producto", width=150)
@@ -719,23 +691,21 @@ def mostrar_inventario():
     label_totales = ttk.Label(frame_totales, text="", style="CustomLabel.TLabel")
     label_totales.pack()
 
-    # Función para mostrar la tabla con los datos filtrados
+    # Función para mostrar la tabla con los datos filtrados por categoría y término de búsqueda (ahora busca en cualquier parte del nombre o código)
     def mostrar_tabla(categoria="Todas", termino_busqueda=""):
         tabla_productos.delete(*tabla_productos.get_children())
         productos_filtrados = obtener_productos_filtrados(categoria, termino_busqueda)
-        for codigo, datos in productos_filtrados:  # Iteramos por código y datos
+        for codigo, datos in productos_filtrados:
             destino_salida = datos["destino_salida"]
-            numero_requisicion = datos.get("numero_requisicion", "")  # Leer de la clave numero_requisicion
-
+            numero_requisicion = datos.get("numero_requisicion", "")
             if numero_requisicion:
-                destino_salida += f" (Req. {numero_requisicion})"  # Agregar el número de requisición al destino de salida
-
+                destino_salida += f" (Req. {numero_requisicion})"
             tabla_productos.insert("", tk.END, values=(
-                codigo,  # Mostramos el código
+                codigo,
                 datos["categoria"],
-                datos["nombre"],  # Accedemos al nombre con la clave "nombre"
+                datos["nombre"],
                 datos["destino_entrada"],
-                destino_salida,  # Mostrar el destino de salida con el número de requisición
+                destino_salida,
                 datos["entrada"],
                 datos["salida"],
                 datos["stock"],
@@ -745,17 +715,18 @@ def mostrar_inventario():
             ))
         mostrar_totales(categoria)
 
-    # Función para obtener los productos filtrados por categoría y término de búsqueda (ahora busca en el nombre)
+    # Función para obtener los productos filtrados por categoría y término de búsqueda (ahora busca en cualquier parte del nombre o código)
     def obtener_productos_filtrados(categoria, termino_busqueda):
         resultados = []
-        for codigo, datos in inventario.items():  # Iteramos por código y datos
+        termino_busqueda = termino_busqueda.lower()
+        for codigo, datos in inventario.items():
             incluir = True
             if categoria != "Todas" and datos["categoria"] != categoria:
                 incluir = False
-            if termino_busqueda and not datos["nombre"].lower().startswith(termino_busqueda):  # Buscamos en el nombre
+            if termino_busqueda and not (termino_busqueda in datos["nombre"].lower() or termino_busqueda in codigo.lower()):  # Busca en cualquier parte del nombre o código
                 incluir = False
             if incluir:
-                resultados.append((codigo, datos))  # Devolvemos el código y los datos
+                resultados.append((codigo, datos))
         return sorted(resultados, key=lambda x: (x[1]["categoria"], x[1]["nombre"]))
 
     # Función para mostrar los totales
@@ -791,11 +762,11 @@ def mostrar_inventario():
                 inventario[codigo_producto_seleccionado]["entrada"] += cantidad
                 inventario[codigo_producto_seleccionado]["fecha_entrada"] = fecha
                 entradas_departamentos.append({
-                    "producto": nombre_producto,
-                    "cantidad": cantidad,
-                    "fecha": fecha,
-                    "destino": inventario[codigo_producto_seleccionado]["destino_entrada"],
-                    "codigo_producto": codigo_producto_seleccionado
+                    "Producto": nombre_producto,
+                    "Cantidad": cantidad,
+                    "Fecha": fecha,
+                    "Destino": inventario[codigo_producto_seleccionado]["destino_entrada"],
+                    "Código": codigo_producto_seleccionado  # <-- Clave corregida a "Código"
                 })
                 mostrar_tabla(categoria_seleccionada_mostrar.get())
                 messagebox.showinfo("Entrada Realizada", f"{cantidad} unidades de {nombre_producto} (Código: {codigo_producto_seleccionado}) entraron al inventario.")
@@ -822,6 +793,7 @@ def mostrar_inventario():
 
     def realizar_salida_contextual(codigo_producto_seleccionado, nombre_producto):
         """Realiza una salida de productos desde el menú contextual usando el código del producto."""
+        # ... (El resto de la función realizar_salida_contextual permanece igual)
         if not codigo_producto_seleccionado:
             messagebox.showerror("Error", "No se proporcionó el código del producto.")
             return
@@ -1541,7 +1513,7 @@ def actualizar_tabla_salidas_espera():
         tabla_salidas_espera.delete(*tabla_salidas_espera.get_children())
         for salida in salidas_espera:
             tabla_salidas_espera.insert("", tk.END, values=(
-                salida.get("Código", "N/A"), # Asumiendo que también tienes el código aquí
+                salida.get("código", "N/A"), # Asumiendo que también tienes el código aquí
                 salida["producto"],
                 salida["cantidad"],
                 salida["departamento"],
@@ -1622,7 +1594,7 @@ def generar_reporte_salidas_espera():
                     fecha_salida = entry_fecha.get()
 
                     salidas_departamentos.append({
-                        "codigo_producto": codigo_producto,
+                        "código": codigo_producto,
                         "producto": producto,
                         "cantidad": cantidad,
                         "fecha": fecha_salida,
