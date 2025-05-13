@@ -352,13 +352,22 @@ def agregar_producto():
         ventana_agregar.destroy()
 
         entradas_departamentos.append({
-            "producto": producto_nombre,
-            "cantidad": entrada,
-            "fecha": fecha_entrada,
-            "destino": destino_entrada,
-            "código": codigo_producto
+            "Código": codigo_producto,  # <-- Modificación: Usar "Código" con mayúscula
+            "Producto": producto_nombre,
+            "Cantidad": entrada,
+            "Fecha": fecha_entrada,
+            "Destino": destino_entrada,
+            "codigo_producto": codigo_producto  # Mantenemos esto para otras referencias
         })
 
+        datos_reportes_para_guardar["Entradas"] = [
+            {"Código": entrada_item.get("Código", "N/A"),
+             "Producto": entrada_item.get("Producto", "N/A"),
+             "Cantidad": entrada_item.get("Cantidad", "N/A"),
+             "Fecha": entrada_item.get("Fecha").isoformat() if isinstance(entrada_item.get("Fecha"), datetime.date) else str(entrada_item.get("Fecha", "N/A")),
+             "Destino": entrada_item.get("Destino", "N/A")}
+            for entrada_item in entradas_departamentos
+        ]
         guardar_datos()
 
     def agregar_nueva_categoria():
@@ -516,7 +525,7 @@ def realizar_salida():
             "producto": producto_nombre,
             "cantidad": cantidad,
             "departamento": departamento,
-            "código": codigo_producto
+            "código": codigo_producto  # <-- Clave consistente: "código" (minúscula)
         })
 
         messagebox.showinfo("Salida en Espera", f"{cantidad} unidades de '{producto_nombre}' (Código: {codigo_producto if codigo_producto else 'N/A'}) solicitadas para {departamento}. Agregado a la lista de espera.")
@@ -1190,40 +1199,46 @@ def generar_reporte_entradas():
     scrollbar_vertical.pack(side=tk.RIGHT, fill=tk.Y, padx=5, pady=5)
     tabla_entradas.configure(yscrollcommand=scrollbar_vertical.set)
 
-   # Insertar datos en la tabla (una sola vez)
+    # Insertar datos en la tabla (una sola vez)
     for entrada in entradas_departamentos:
-        fecha_str = entrada.get("fecha", "N/A") 
+        fecha_str = entrada.get("Fecha", "N/A")
         if isinstance(fecha_str, datetime.date):
             fecha_str = fecha_str.strftime("%Y-%m-%d")
         tabla_entradas.insert("", tk.END, values=(
-            entrada.get("código", "N/A"),
-            entrada.get("producto","N/A"), 
-            entrada.get("cantidad", "N/A"),
+            entrada.get("Código", "N/A"),
+            entrada.get("Producto","N/A"),
+            entrada.get("Cantidad", "N/A"),
             fecha_str,
-            entrada.get("destino", "N/A") 
+            entrada.get("Destino", "N/A")
         ))
-   
 
     def eliminar_entrada():
         seleccion = tabla_entradas.selection()
         if seleccion:
-            item_id = seleccion[0]  # Obtener el ID del elemento seleccionado
-            index = tabla_entradas.index(item_id)  # Obtener el índice del elemento en la tabla
+            item_id = seleccion[0]
+            index = tabla_entradas.index(item_id)
 
-            if 0 <= index < len(entradas_departamentos):  # Verificar si el índice es válido
+            if 0 <= index < len(entradas_departamentos):
                 del entradas_departamentos[index]
                 tabla_entradas.delete(item_id)
-                guardar_datos() # Guardar los cambios al eliminar
+                datos_reportes_para_guardar["Entradas"] = [
+                    {"Código": entrada_item.get("Código", "N/A"),
+                     "Producto": entrada_item.get("Producto", "N/A"),
+                     "Cantidad": entrada_item.get("Cantidad", "N/A"),
+                     "Fecha": entrada_item.get("Fecha").isoformat() if isinstance(entrada_item.get("Fecha"), datetime.date) else str(entrada_item.get("Fecha", "N/A")),
+                     "Destino": entrada_item.get("Destino", "N/A")}
+                    for entrada_item in entradas_departamentos
+                ]
+                guardar_datos()
             else:
                 messagebox.showerror("Error", "Índice de elemento no válido.")
 
     def editar_entrada():
         seleccion = tabla_entradas.selection()
         if seleccion:
-            item_id = seleccion[0]  # Obtener el ID del elemento seleccionado
-            index = tabla_entradas.index(item_id)  # Obtener el índice del elemento en la tabla
-
-            if 0 <= index < len(entradas_departamentos):  # Verificar si el índice es válido
+            item_id = seleccion[0]
+            index = tabla_entradas.index(item_id)
+            if 0 <= index < len(entradas_departamentos):
                 entrada = entradas_departamentos[index]
 
                 # Crear ventana de edición
@@ -1235,42 +1250,54 @@ def generar_reporte_entradas():
                 tk.Label(ventana_edicion, text="Código:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
                 entry_codigo = tk.Entry(ventana_edicion)
                 entry_codigo.grid(row=0, column=1, padx=5, pady=5)
-                entry_codigo.insert(0, entrada.get("codigo_producto", "N/A"))
+                entry_codigo.insert(0, entrada.get("Código", "N/A")) # Usar "Código"
                 entry_codigo.config(state="readonly") # Hacer el código de solo lectura
 
                 tk.Label(ventana_edicion, text="Producto:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
                 entry_producto = tk.Entry(ventana_edicion)
                 entry_producto.grid(row=1, column=1, padx=5, pady=5)
-                entry_producto.insert(0, entrada["producto"])
+                entry_producto.insert(0, entrada["Producto"]) # Usar "Producto"
 
                 tk.Label(ventana_edicion, text="Cantidad:", fg="#ffffff", bg="#A9A9A9").grid(row=2, column=0, padx=5, pady=5)
                 entry_cantidad = tk.Entry(ventana_edicion)
                 entry_cantidad.grid(row=2, column=1, padx=5, pady=5)
-                entry_cantidad.insert(0, entrada["cantidad"])
+                entry_cantidad.insert(0, entrada["Cantidad"]) # Usar "Cantidad"
 
                 tk.Label(ventana_edicion, text="Fecha:", fg="#ffffff", bg="#A9A9A9").grid(row=3, column=0, padx=5, pady=5)
                 entry_fecha = tk.Entry(ventana_edicion)
                 entry_fecha.grid(row=3, column=1, padx=5, pady=5)
-                entry_fecha.insert(0, entrada["fecha"])
+                entry_fecha.insert(0, entrada["Fecha"].strftime("%Y-%m-%d") if isinstance(entrada["Fecha"], datetime.date) else str(entrada["Fecha"])) # Usar "Fecha"
 
                 tk.Label(ventana_edicion, text="Destino:", fg="#ffffff", bg="#A9A9A9").grid(row=4, column=0, padx=5, pady=5)
                 entry_destino = tk.Entry(ventana_edicion)
                 entry_destino.grid(row=4, column=1, padx=5, pady=5)
-                entry_destino.insert(0, entrada["destino"])
+                entry_destino.insert(0, entrada["Destino"]) # Usar "Destino"
 
                 # Función para guardar los cambios
                 def guardar_cambios_edicion():
-                    entrada["producto"] = entry_producto.get()
+                    entrada["Producto"] = entry_producto.get() # Usar "Producto"
                     try:
-                        entrada["cantidad"] = int(entry_cantidad.get())
+                        entrada["Cantidad"] = int(entry_cantidad.get()) # Usar "Cantidad"
                     except ValueError:
                         messagebox.showerror("Error", "Cantidad debe ser un número entero.")
                         return
-                    entrada["fecha"] = entry_fecha.get()
-                    entrada["destino"] = entry_destino.get()
+                    try:
+                        entrada["Fecha"] = datetime.datetime.strptime(entry_fecha.get(), "%Y-%m-%d").date() # Usar "Fecha"
+                    except ValueError:
+                        messagebox.showerror("Error", "Formato de fecha incorrecto (YYYY-MM-DD).")
+                        return
+                    entrada["Destino"] = entry_destino.get() # Usar "Destino"
                     # Formatear la fecha a una cadena legible para la tabla
-                    fecha_str_tabla = entrada["fecha"].strftime("%Y-%m-%d") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
-                    tabla_entradas.item(seleccion, values=(entrada.get("codigo_producto", "N/A"), entrada["producto"], entrada["cantidad"], fecha_str_tabla, entrada["destino"]))
+                    fecha_str_tabla = entrada["Fecha"].strftime("%Y-%m-%d") if isinstance(entrada["Fecha"], datetime.date) else str(entrada["Fecha"])
+                    tabla_entradas.item(seleccion, values=(entrada["Código"], entrada["Producto"], entrada["Cantidad"], fecha_str_tabla, entrada["Destino"])) # Usar "Código", "Producto", "Cantidad", "Fecha", "Destino"
+                    datos_reportes_para_guardar["Entradas"] = [
+                        {"Código": entrada_item.get("Código", "N/A"),
+                         "Producto": entrada_item.get("Producto", "N/A"),
+                         "Cantidad": entrada_item.get("Cantidad", "N/A"),
+                         "Fecha": entrada_item.get("Fecha").isoformat() if isinstance(entrada_item.get("Fecha"), datetime.date) else str(entrada_item.get("Fecha", "N/A")),
+                         "Destino": entrada_item.get("Destino", "N/A")}
+                        for entrada_item in entradas_departamentos
+                    ]
                     guardar_datos() # Guardar los cambios al editar
                     ventana_edicion.destroy()
 
@@ -1293,14 +1320,14 @@ def generar_reporte_entradas():
             abreviatura = entry_abreviatura.get().lower()
             tabla_entradas.delete(*tabla_entradas.get_children())
             for entrada in entradas_departamentos:
-                if abreviatura in entrada["producto"].lower():
-                    fecha_str = entrada["fecha"].strftime("%Y-%m-%d") if isinstance(entrada["fecha"], datetime.date) else str(entrada["fecha"])
+                if abreviatura in entrada["Producto"].lower(): # Usar "Producto"
+                    fecha_str = entrada["Fecha"].strftime("%Y-%m-%d") if isinstance(entrada["Fecha"], datetime.date) else str(entrada["Fecha"]) # Usar "Fecha"
                     tabla_entradas.insert("", tk.END, values=(
-                        entrada.get("codigo_producto", "N/A"),
-                        entrada["producto"],
-                        entrada["cantidad"],
+                        entrada.get("Código", "N/A"), # Usar "Código"
+                        entrada["Producto"], # Usar "Producto"
+                        entrada["Cantidad"], # Usar "Cantidad"
                         fecha_str,
-                        entrada["destino"]
+                        entrada["Destino"] # Usar "Destino"
                     ))
 
         entry_abreviatura.bind("<KeyRelease>", filtrar_por_abreviatura)
@@ -1319,8 +1346,6 @@ def generar_reporte_entradas():
             menu_contextual.post(event.x_root, event.y_root)
 
     tabla_entradas.bind("<Button-3>", mostrar_menu_contextual)
-    datos_reportes_para_guardar["Entradas"] = [{"Código": entrada.get("codigo_producto", "N/A"), "Producto": entrada.get("producto", "N/A"), "Cantidad": entrada.get("cantidad", "N/A"), "Fecha": str(entrada.get("fecha", "N/A")), "Destino": entrada.get("destino", "N/A")} for entrada in entradas_departamentos]
-
 
 def generar_reporte_salidas():
     """Genera un reporte del historial de salidas."""
@@ -1528,9 +1553,7 @@ def generar_reporte_salidas_espera():
 
     if ventana_reporte_salidas_espera and ventana_reporte_salidas_espera.winfo_exists():
         ventana_reporte_salidas_espera.lift()
-        
         actualizar_tabla_salidas_espera()
-        
         return
 
     ventana_reporte_salidas_espera = tk.Toplevel(ventana)
@@ -1573,12 +1596,12 @@ def generar_reporte_salidas_espera():
     datos_reporte = []
     for salida in salidas_espera:
         tabla_salidas_espera.insert("", tk.END, values=(
-            salida.get("código", "N/A"),
+            salida.get("código", "N/A"),  # <-- Clave consistente: "código" (minúscula)
             salida.get("producto", "N/A"),
             salida.get("cantidad", "N/A"),
             salida.get("departamento", "N/A")
         ))
-        datos_reporte.append({"Código": salida.get("codigo_producto", "N/A"), "Producto": salida.get("producto", "N/A"), "Cantidad": salida.get("cantidad", "N/A"), "Departamento": salida.get("departamento", "N/A")})
+        datos_reporte.append({"Código": salida.get("código", "N/A"), "producto": salida.get("producto", "N/A"), "cantidad": salida.get("cantidad", "N/A"), "departamento": salida.get("departamento", "N/A")}) # <-- Clave consistente: "código" (minúscula)
 
     # Insertar datos iniciales en la tabla
     actualizar_tabla_salidas_espera()
@@ -1609,7 +1632,7 @@ def generar_reporte_salidas_espera():
 
                     try:
                         diccionario_a_eliminar = {
-                            "codigo_producto": codigo_producto,
+                            "código": codigo_producto,  # <-- Clave consistente: "código" (minúscula)
                             "producto": producto,
                             "cantidad": int(cantidad),
                             "departamento": destino
@@ -1619,7 +1642,7 @@ def generar_reporte_salidas_espera():
                         return
 
                     for i, salida_espera in enumerate(salidas_espera):
-                        if (salida_espera.get("codigo_producto") == diccionario_a_eliminar.get("codigo_producto") and
+                        if (salida_espera.get("código") == diccionario_a_eliminar.get("código") and
                                 salida_espera["producto"] == diccionario_a_eliminar["producto"] and
                                 salida_espera["cantidad"] == diccionario_a_eliminar["cantidad"] and
                                 salida_espera["departamento"] == diccionario_a_eliminar["departamento"]):
@@ -1682,7 +1705,7 @@ def generar_reporte_salidas_espera():
                 tk.Label(ventana_edicion, text="Código:", fg="#ffffff", bg="#A9A9A9").grid(row=0, column=0, padx=5, pady=5)
                 entry_codigo = ttk.Entry(ventana_edicion)
                 entry_codigo.grid(row=0, column=1, padx=5, pady=5)
-                entry_codigo.insert(0, salida.get("codigo_producto", "N/A"))
+                entry_codigo.insert(0, salida.get("código", "N/A")) # <-- Clave consistente: "código" (minúscula)
                 entry_codigo.config(state="readonly")
 
                 tk.Label(ventana_edicion, text="Producto:", fg="#ffffff", bg="#A9A9A9").grid(row=1, column=0, padx=5, pady=5)
@@ -1709,7 +1732,7 @@ def generar_reporte_salidas_espera():
                         messagebox.showerror("Error", "Cantidad inválida. Debe ser un número entero.")
                         return
                     salida["departamento"] = entry_departamento.get()
-                    tabla_salidas_espera.item(seleccion, values=(salida.get("codigo_producto", "N/A"), salida["producto"], salida["cantidad"], salida["departamento"]))
+                    tabla_salidas_espera.item(seleccion, values=(salida.get("código", "N/A"), salida["producto"], salida["cantidad"], salida["departamento"])) # <-- Clave consistente: "código" (minúscula)
                     ventana_edicion.destroy()
                     actualizar_tabla_salidas_espera() # Actualizar la tabla principal
 
@@ -1734,7 +1757,7 @@ def generar_reporte_salidas_espera():
             for salida in salidas_espera:
                 if abreviatura in salida["producto"].lower():
                     tabla_salidas_espera.insert("", tk.END, values=(
-                        salida.get("codigo_producto", "N/A"),
+                        salida.get("código", "N/A"), # <-- Clave consistente: "código" (minúscula)
                         salida["producto"],
                         salida["cantidad"],
                         salida["departamento"],
@@ -1761,8 +1784,33 @@ def generar_reporte_salidas_espera():
     ventana_reporte_salidas_espera.grid_columnconfigure(0, weight=1)
     ventana_reporte_salidas_espera.grid_rowconfigure(0, weight=1)
 
-    datos_reportes_para_guardar["Salidas en Espera"] = [{"Código": salida.get("codigo_producto", "N/A"), "producto": salida.get("producto", "N/A"), "cantidad": salida.get("cantidad", "N/A"), "departamento": salida.get("departamento", "N/A")} for salida in salidas_espera]
+    datos_reportes_para_guardar["Salidas en Espera"] = [{"Código": salida.get("código", "N/A"), "producto": salida.get("producto", "N/A"), "cantidad": salida.get("cantidad", "N/A"), "departamento": salida.get("departamento", "N/A")} for salida in salidas_espera] # <-- Clave consistente: "código" (minúscula)
 
+def actualizar_tabla_salidas_espera():
+    """Actualiza el contenido de la tabla de salidas en espera."""
+    global tabla_salidas_espera
+    if tabla_salidas_espera:
+        tabla_salidas_espera.delete(*tabla_salidas_espera.get_children())
+        for salida in salidas_espera:
+            tabla_salidas_espera.insert("", tk.END, values=(
+                salida.get("código", "N/A"),
+                salida.get("producto", "N/A"),
+                salida.get("cantidad", "N/A"),
+                salida.get("departamento", "N/A")
+            ))
+
+def abrir_calendario(parent, entry):
+    def seleccionar_fecha():
+        fecha_seleccionada = cal.get_date()
+        entry.delete(0, tk.END)
+        entry.insert(0, fecha_seleccionada)
+        ventana_calendario.destroy()
+
+    ventana_calendario = tk.Toplevel(parent)
+    ventana_calendario.title("Seleccionar Fecha")
+    cal = Calendar(ventana_calendario, selectmode="day", date_pattern="yyyy-mm-dd")
+    cal.pack(padx=10, pady=10)
+    tk.Button(ventana_calendario, text="Seleccionar", command=seleccionar_fecha).pack(pady=5)
 
 
 def ventana_reportes():
