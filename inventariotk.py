@@ -59,7 +59,7 @@ def guardar_datos():
     # Actualiza datos_reportes_para_guardar["Salidas en Espera"]
     datos_reportes_para_guardar["Salidas en Espera"] = [
         {
-            "código": salida.get("código", "N/A"),  # <-- Usa "Código" (mayúscula)
+            "código": salida.get("código", "N/A"),  
             "producto": salida.get("producto", "N/A"),
             "cantidad": salida.get("cantidad", "N/A"),
             "departamento": salida.get("departamento", "N/A")
